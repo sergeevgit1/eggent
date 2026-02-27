@@ -1,10 +1,12 @@
 import { NextRequest } from "next/server";
 import { timingSafeEqual } from "node:crypto";
-import {
-  ExternalMessageError,
-  handleExternalMessage,
-} from "@/lib/external/handle-external-message";
+import { ExternalMessageError } from "@/lib/external/handle-external-message";
 import { getExternalApiToken } from "@/lib/storage/external-api-token-store";
+import {
+  enqueueExternalMessageTask,
+  ensureQueueWorkerStarted,
+  waitForTaskResult,
+} from "@/lib/queue/runtime";
 
 interface ExternalMessageBody {
   sessionId?: unknown;
@@ -65,18 +67,30 @@ export async function POST(req: NextRequest) {
     }
 
     const body = (await req.json()) as ExternalMessageBody;
-    const result = await handleExternalMessage({
-      sessionId:
-        typeof body.sessionId === "string" ? body.sessionId : "",
+    ensureQueueWorkerStarted();
+
+    const task = await enqueueExternalMessageTask({
+      sessionId: typeof body.sessionId === "string" ? body.sessionId : "",
       message: typeof body.message === "string" ? body.message : "",
-      projectId:
-        typeof body.projectId === "string" ? body.projectId : undefined,
+      projectId: typeof body.projectId === "string" ? body.projectId : undefined,
       chatId: typeof body.chatId === "string" ? body.chatId : undefined,
-      currentPath:
-        typeof body.currentPath === "string" ? body.currentPath : undefined,
+      currentPath: typeof body.currentPath === "string" ? body.currentPath : undefined,
+      idempotencyKey: req.headers.get("x-idempotency-key") || undefined,
     });
 
-    return Response.json(result);
+    const waited = await waitForTaskResult(task.id, 30_000);
+    if (waited?.status === "done") {
+      return Response.json(waited.result ?? { ok: true, taskId: task.id });
+    }
+
+    return Response.json(
+      {
+        accepted: true,
+        taskId: task.id,
+        status: waited?.status ?? task.status,
+      },
+      { status: 202 }
+    );
   } catch (error) {
     if (error instanceof ExternalMessageError) {
       return Response.json(error.payload, { status: error.status });

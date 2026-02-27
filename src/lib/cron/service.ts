@@ -1,7 +1,14 @@
+import { createHash } from "node:crypto";
 import { createChat, getChat } from "@/lib/storage/chat-store";
 import { getAllProjects, getProject } from "@/lib/storage/project-store";
 import { getTelegramIntegrationRuntimeConfig } from "@/lib/storage/telegram-integration-store";
 import { runAgentText } from "@/lib/agent/agent";
+import {
+  enqueueCronRunTask,
+  enqueueTelegramSendTask,
+  ensureQueueWorkerStarted,
+  waitForTaskResult,
+} from "@/lib/queue/runtime";
 import { parseAbsoluteTimeMs } from "@/lib/cron/parse";
 import { resolveCronRunLogPath, resolveCronStorePath, GLOBAL_CRON_PROJECT_ID } from "@/lib/cron/paths";
 import { appendCronRunLog, readCronRunLogEntries } from "@/lib/cron/run-log";
@@ -569,28 +576,15 @@ async function executeCronJob(job: CronJob): Promise<RunResult> {
   };
 
   const sendTelegramMessage = async (chatIdValue: string, text: string): Promise<void> => {
-    const response = await fetch(
-      `https://api.telegram.org/bot${telegramBotToken}/sendMessage`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          chat_id: chatIdValue,
-          text: normalizeOutgoingTelegramText(text),
-        }),
-      }
-    );
-
-    const payload = (await response.json().catch(() => null)) as
-      | { ok?: boolean; description?: string }
-      | null;
-
-    if (!response.ok || !payload?.ok) {
-      throw new Error(
-        `Telegram sendMessage failed (${response.status})${payload?.description ? `: ${payload.description}` : ""}`
-      );
+    const queued = await enqueueTelegramSendTask({
+      botToken: telegramBotToken,
+      chatId: chatIdValue,
+      text: normalizeOutgoingTelegramText(text),
+      idempotencyKey: `cron-tg:${job.id}:${chatIdValue}:${createHash("sha1").update(text).digest("hex")}`,
+    });
+    const sent = await waitForTaskResult(queued.id, 30_000);
+    if (!sent || sent.status !== "done") {
+      throw new Error(sent?.error || "Telegram queued send did not complete in time");
     }
   };
 
@@ -829,6 +823,31 @@ export async function runCronJobNow(
     return { ran: false, reason: "already-running" };
   }
 
+  ensureQueueWorkerStarted();
+  await enqueueCronRunTask({
+    projectId,
+    jobId: claimed.id,
+    idempotencyKey: `cron-run-now:${projectId}:${claimed.id}:${claimed.state.runningAtMs ?? Date.now()}`,
+  });
+  return { ran: true };
+}
+
+export async function runClaimedCronJob(
+  projectIdRaw: string,
+  jobId: string
+): Promise<{ ran: boolean; reason?: "not-found" | "not-claimed" }> {
+  const projectId = normalizeProjectId(projectIdRaw);
+  await assertProjectExists(projectId);
+  const claimed = await withProjectStore(projectId, async ({ store }) => {
+    const job = store.jobs.find((item) => item.id === jobId);
+    if (!job) return null;
+    if (typeof job.state.runningAtMs !== "number") return "not-claimed" as const;
+    return structuredClone(job);
+  });
+
+  if (claimed === null) return { ran: false, reason: "not-found" };
+  if (claimed === "not-claimed") return { ran: false, reason: "not-claimed" };
+
   const result = await executeCronJob(claimed);
   await finalizeJobRun(projectId, claimed.id, result);
   return { ran: true };
@@ -911,7 +930,14 @@ export class CronScheduler {
         claimed.push(...due);
       }
       if (claimed.length > 0) {
-        await executeClaimedJobs(claimed);
+        ensureQueueWorkerStarted();
+        for (const item of claimed) {
+          await enqueueCronRunTask({
+            projectId: item.projectId,
+            jobId: item.job.id,
+            idempotencyKey: `cron-run:${item.projectId}:${item.job.id}:${item.job.state.runningAtMs ?? nowMs}`,
+          });
+        }
       }
       const nextWakeAtMs = await computeNextGlobalWakeAtMs(projectIds);
       const delay = nextWakeAtMs === null ? MAX_TIMER_DELAY_MS : Math.max(nextWakeAtMs - Date.now(), 0);
