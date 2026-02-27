@@ -237,7 +237,7 @@ const messages: Record<Locale, Dict> = {
     "cron.deleteJobTitle": "Delete job",
     "cron.runHistory": "Run History",
     "cron.runHistoryFor": "for",
-    "cron.selectRunsHint": "Select a job and click "Runs" to inspect history.",
+    "cron.selectRunsHint": "Select a job and click \"Runs\" to inspect history.",
     "cron.loadingRunHistory": "Loading run history...",
     "cron.noRunsYet": "No run history yet.",
     "cron.jobNotActiveNoRuns": "Job is no longer in active list (likely one-shot auto-delete). No runs found yet.",
