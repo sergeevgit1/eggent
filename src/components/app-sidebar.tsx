@@ -52,7 +52,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     activeProjectId,
     setActiveProjectId,
   } = useAppStore();
-  const { locale, setLocale, t } = useI18n();
+  const { t } = useI18n();
   const projectsTick = useBackgroundSync({
     topics: ["projects", "global"],
   });
@@ -186,24 +186,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <MessageSquarePlus className="size-4" />
             {t("chat.new", "New Chat")}
           </Button>
-          <div className="flex gap-1">
-            <Button
-              type="button"
-              variant={locale === "en" ? "default" : "outline"}
-              className="h-7 px-2 text-xs"
-              onClick={() => setLocale("en")}
-            >
-              EN
-            </Button>
-            <Button
-              type="button"
-              variant={locale === "ru" ? "default" : "outline"}
-              className="h-7 px-2 text-xs"
-              onClick={() => setLocale("ru")}
-            >
-              RU
-            </Button>
-          </div>
         </div>
       </SidebarHeader>
 

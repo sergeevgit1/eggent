@@ -50,7 +50,7 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 md:px-6">
+    <div className="min-h-0 flex-1 overflow-y-auto px-4 md:px-6">
       <div className="max-w-3xl mx-auto py-4 space-y-1">
         {messages.map((message) => (
           <MessageBubble key={message.id} message={message} />

@@ -182,7 +182,7 @@ export function ChatInput({
 
   return (
     <div
-      className={`border-t bg-background p-4 transition-colors ${isDragging ? "bg-primary/5 border-primary" : ""}`}
+      className={`shrink-0 border-t bg-background p-4 transition-colors ${isDragging ? "bg-primary/5 border-primary" : ""}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}

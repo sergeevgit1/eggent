@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 type Locale = "en" | "ru";
+type Theme = "light" | "dark";
 
 type Dict = Record<string, string>;
 
@@ -74,6 +75,8 @@ const messages: Record<Locale, Dict> = {
 type I18nContextValue = {
   locale: Locale;
   setLocale: (locale: Locale) => void;
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
   t: (key: string, fallback?: string) => string;
 };
 
@@ -81,29 +84,48 @@ const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>("en");
+  const [theme, setThemeState] = useState<Theme>("light");
 
   useEffect(() => {
     const saved = (localStorage.getItem("eggent.locale") as Locale | null) || null;
     if (saved === "ru" || saved === "en") {
       setLocaleState(saved);
-      return;
+    } else {
+      const lang = typeof navigator !== "undefined" ? navigator.language.toLowerCase() : "en";
+      if (lang.startsWith("ru")) setLocaleState("ru");
     }
-    const lang = typeof navigator !== "undefined" ? navigator.language.toLowerCase() : "en";
-    if (lang.startsWith("ru")) setLocaleState("ru");
+
+    const savedTheme = (localStorage.getItem("eggent.theme") as Theme | null) || null;
+    if (savedTheme === "dark" || savedTheme === "light") {
+      setThemeState(savedTheme);
+    }
   }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove("light", "dark");
+    root.classList.add(theme);
+    localStorage.setItem("eggent.theme", theme);
+  }, [theme]);
 
   const setLocale = (next: Locale) => {
     setLocaleState(next);
     localStorage.setItem("eggent.locale", next);
   };
 
+  const setTheme = (next: Theme) => {
+    setThemeState(next);
+  };
+
   const value = useMemo<I18nContextValue>(
     () => ({
       locale,
       setLocale,
+      theme,
+      setTheme,
       t: (key, fallback) => messages[locale][key] || fallback || key,
     }),
-    [locale]
+    [locale, theme]
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
