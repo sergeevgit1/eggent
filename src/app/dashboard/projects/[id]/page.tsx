@@ -12,8 +12,10 @@ import { KnowledgeSection } from "@/components/knowledge-section";
 import { ProjectContextSection } from "@/components/project-context-section";
 import { CronSection } from "@/components/cron-section";
 import type { Project } from "@/lib/types";
+import { useI18n } from "@/components/i18n-provider";
 
 export default function ProjectDetailsPage() {
+    const { t } = useI18n();
     const params = useParams();
     const router = useRouter();
     const id = params.id as string;
@@ -23,7 +25,7 @@ export default function ProjectDetailsPage() {
     useEffect(() => {
         fetch(`/api/projects/${id}`)
             .then((res) => {
-                if (!res.ok) throw new Error("Project not found");
+                if (!res.ok) throw new Error(t("projects.notFound", "Project not found"));
                 return res.json();
             })
             .then((data: Project) => {
@@ -47,9 +49,9 @@ export default function ProjectDetailsPage() {
     if (!project) {
         return (
             <div className="flex h-screen flex-col items-center justify-center gap-4">
-                <h1 className="text-2xl font-bold">Project Not Found</h1>
+                <h1 className="text-2xl font-bold">{t("projects.notFoundTitle", "Project Not Found")}</h1>
                 <Button onClick={() => router.push("/dashboard/projects")}>
-                    Back to Projects
+                    {t("projects.backToProjects", "Back to Projects")}
                 </Button>
             </div>
         );
@@ -78,7 +80,7 @@ export default function ProjectDetailsPage() {
                                         <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
                                     </div>
                                     <p className="text-muted-foreground">
-                                        {project.description || "No description provided."}
+                                        {project.description || t("common.noDescriptionProvided", "No description provided.")}
                                     </p>
                                 </div>
                                 {/* Could handle project settings here */}
@@ -91,10 +93,10 @@ export default function ProjectDetailsPage() {
                             {/* Instructions */}
                             <div className="space-y-2">
                                 <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                                    Instructions
+                                    {t("common.instructions", "Instructions")}
                                 </h3>
                                 <div className="bg-muted/50 p-4 rounded-lg text-sm font-mono whitespace-pre-wrap">
-                                    {project.instructions || "No custom instructions defined."}
+                                    {project.instructions || t("projects.noCustomInstructions", "No custom instructions defined.")}
                                 </div>
                             </div>
 

@@ -73,14 +73,14 @@ export function SystemNavigationSheet({ mode }: { mode: TriggerMode }) {
         ) : (
           <Button variant="ghost" className="w-full justify-start gap-2 md:hidden">
             <User className="size-4" />
-            admin
+            {t("nav.adminUser", "admin")}
           </Button>
         )}
       </SheetTrigger>
       <SheetContent side="right">
         <SheetHeader>
           <SheetTitle>{t("nav.navigation", "Navigation")}</SheetTitle>
-          <SheetDescription>Eggent admin</SheetDescription>
+          <SheetDescription>{t("nav.admin", "Eggent admin")}</SheetDescription>
         </SheetHeader>
 
         <div className="px-4 pb-4 space-y-2 overflow-y-auto">
