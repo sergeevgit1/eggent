@@ -7,7 +7,7 @@ export default function DashboardLayout({
 }) {
   return (
     <>
-      {children}
+      <div className="pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-0">{children}</div>
       <MobileBottomNav />
     </>
   );
