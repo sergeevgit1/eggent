@@ -11,6 +11,7 @@ import {
     SheetTitle,
     SheetDescription,
 } from "@/components/ui/sheet";
+import { useI18n } from "@/components/i18n-provider";
 
 interface KnowledgeChunk {
     id: string;
@@ -37,6 +38,7 @@ interface KnowledgeSectionProps {
 }
 
 export function KnowledgeSection({ projectId }: KnowledgeSectionProps) {
+    const { t } = useI18n();
     const [files, setFiles] = useState<KnowledgeFile[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
@@ -115,20 +117,20 @@ export function KnowledgeSection({ projectId }: KnowledgeSectionProps) {
             });
 
             if (!res.ok) {
-                throw new Error("Upload failed");
+                throw new Error(t("knowledge.errors.upload", "Upload failed"));
             }
 
             await loadFiles();
         } catch (error) {
             console.error("Upload error:", error);
-            alert("Failed to upload file");
+            alert(t("knowledge.errors.uploadFile", "Failed to upload file"));
         } finally {
             setUploading(false);
         }
     }
 
     async function handleDelete(filename: string) {
-        if (!confirm(`Are you sure you want to delete "${filename}"?`)) return;
+        if (!confirm(`${t("knowledge.confirm.deleteFile", "Are you sure you want to delete")} "${filename}"?`)) return;
 
         try {
             setDeleting(filename);
@@ -145,14 +147,14 @@ export function KnowledgeSection({ projectId }: KnowledgeSectionProps) {
             await loadFiles();
         } catch (error) {
             console.error("Delete error:", error);
-            alert("Failed to delete file");
+            alert(t("knowledge.errors.deleteFile", "Failed to delete file"));
         } finally {
             setDeleting(null);
         }
     }
 
     async function handleDeleteMemory(id: string) {
-        if (!confirm("Are you sure you want to delete this memory?")) return;
+        if (!confirm(t("knowledge.confirm.deleteMemory", "Are you sure you want to delete this memory?"))) return;
 
         try {
             setDeletingMemoryId(id);
@@ -170,7 +172,7 @@ export function KnowledgeSection({ projectId }: KnowledgeSectionProps) {
             await loadMemories();
         } catch (error) {
             console.error("Delete memory error:", error);
-            alert("Failed to delete memory");
+            alert(t("knowledge.errors.deleteMemory", "Failed to delete memory"));
         } finally {
             setDeletingMemoryId(null);
         }
@@ -220,7 +222,7 @@ export function KnowledgeSection({ projectId }: KnowledgeSectionProps) {
 
     function getMemoryTitle(memory: MemoryEntry, index: number) {
         const created = formatDate(memory.createdAt);
-        const prefix = memory.area ? memory.area.charAt(0).toUpperCase() + memory.area.slice(1) : "Memory";
+        const prefix = memory.area ? memory.area.charAt(0).toUpperCase() + memory.area.slice(1) : t("knowledge.memory", "Memory");
         if (created) {
             return `${prefix} #${index + 1} • ${created}`;
         }
@@ -244,7 +246,7 @@ export function KnowledgeSection({ projectId }: KnowledgeSectionProps) {
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium flex items-center gap-2">
-                    Knowledge Base
+                    {t("knowledge.title", "Knowledge Base")}
                 </h3>
                 <div>
                     <input
@@ -265,25 +267,25 @@ export function KnowledgeSection({ projectId }: KnowledgeSectionProps) {
                         ) : (
                             <Upload className="size-4" />
                         )}
-                        {uploading ? "Uploading..." : "Upload File"}
+                        {uploading ? t("knowledge.uploading", "Uploading...") : t("knowledge.uploadFile", "Upload File")}
                     </Button>
                 </div>
             </div>
 
             <div className="border rounded-lg bg-card">
                 <div className="flex items-center justify-between px-4 py-3 border-b">
-                    <h4 className="text-sm font-medium">Files Memory</h4>
+                    <h4 className="text-sm font-medium">{t("knowledge.filesMemory", "Files Memory")}</h4>
                 </div>
                 {loading ? (
                     <div className="p-8 text-center text-muted-foreground flex items-center justify-center gap-2">
                         <Loader2 className="size-4 animate-spin" />
-                        Loading files...
+                        {t("knowledge.loadingFiles", "Loading files...")}
                     </div>
                 ) : files.length === 0 ? (
                     <div className="p-8 text-center text-muted-foreground">
                         <FolderOpen className="size-10 mx-auto mb-3 opacity-20" />
-                        <p>No files in knowledge base yet.</p>
-                        <p className="text-xs mt-1">Upload PDF, Word, Excel, text, or images to give the agent context.</p>
+                        <p>{t("knowledge.emptyFiles", "No files in knowledge base yet.")}</p>
+                        <p className="text-xs mt-1">{t("knowledge.emptyFilesHint", "Upload PDF, Word, Excel, text, or images to give the agent context.")}</p>
                     </div>
                 ) : (
                     <div className="divide-y">
@@ -325,7 +327,7 @@ export function KnowledgeSection({ projectId }: KnowledgeSectionProps) {
                                                 handleDelete(file.name);
                                             }}
                                             disabled={deleting === file.name}
-                                            title="Delete"
+                                            title={t("common.delete", "Delete")}
                                         >
                                             {deleting === file.name ? (
                                                 <Loader2 className="size-4 animate-spin" />
@@ -345,18 +347,18 @@ export function KnowledgeSection({ projectId }: KnowledgeSectionProps) {
             <div className="border rounded-lg bg-card">
                 <div className="flex items-center justify-between px-4 py-3 border-b">
                     <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-medium">Chat Memory</h4>
+                        <h4 className="text-sm font-medium">{t("knowledge.chatMemory", "Chat Memory")}</h4>
                     </div>
                 </div>
 
                 {memoriesLoading ? (
                     <div className="p-8 text-center text-muted-foreground flex items-center justify-center gap-2">
                         <Loader2 className="size-4 animate-spin" />
-                        Loading memory...
+                        {t("knowledge.loadingMemory", "Loading memory...")}
                     </div>
                 ) : memories.length === 0 ? (
                     <div className="p-4 text-sm text-muted-foreground">
-                        No chat memory saved for this project yet.
+                        {t("knowledge.emptyChatMemory", "No chat memory saved for this project yet.")}
                     </div>
                 ) : (
                     <div className="divide-y">
@@ -388,7 +390,7 @@ export function KnowledgeSection({ projectId }: KnowledgeSectionProps) {
                                         className="text-muted-foreground hover:text-destructive"
                                         onClick={() => handleDeleteMemory(memory.id)}
                                         disabled={deletingMemoryId === memory.id}
-                                        title="Delete memory"
+                                        title={t("knowledge.deleteMemory", "Delete memory")}
                                     >
                                         {deletingMemoryId === memory.id ? (
                                             <Loader2 className="size-4 animate-spin" />
@@ -410,21 +412,21 @@ export function KnowledgeSection({ projectId }: KnowledgeSectionProps) {
                 >
                     <SheetHeader>
                         <SheetTitle className="truncate pr-8">
-                            Chunks: {chunksFile ?? ""}
+                            {t("knowledge.chunks", "Chunks")}: {chunksFile ?? ""}
                         </SheetTitle>
                         <SheetDescription>
-                            {chunks.length} vectorized text chunk{chunks.length !== 1 ? "s" : ""}
+                            {chunks.length} {t("knowledge.vectorizedChunks", "vectorized text chunk")}{chunks.length !== 1 ? "s" : ""}
                         </SheetDescription>
                     </SheetHeader>
                     <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
                         {chunksLoading ? (
                             <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
                                 <Loader2 className="size-4 animate-spin" />
-                                Loading chunks...
+                                {t("knowledge.loadingChunks", "Loading chunks...")}
                             </div>
                         ) : chunks.length === 0 ? (
                             <p className="text-sm text-muted-foreground py-4">
-                                No chunks for this file.
+                                {t("knowledge.emptyChunks", "No chunks for this file.")}
                             </p>
                         ) : (
                             chunks.map((chunk) => (
@@ -433,7 +435,7 @@ export function KnowledgeSection({ projectId }: KnowledgeSectionProps) {
                                     className="rounded-lg border bg-muted/30 p-3 text-sm"
                                 >
                                     <p className="font-medium text-xs text-muted-foreground mb-2">
-                                        Chunk {chunk.index}
+                                        {t("knowledge.chunk", "Chunk")} {chunk.index}
                                     </p>
                                     <pre className="whitespace-pre-wrap wrap-break-word font-sans text-foreground max-h-48 overflow-y-auto">
                                         {chunk.text}

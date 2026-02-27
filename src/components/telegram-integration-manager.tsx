@@ -5,6 +5,7 @@ import { KeyRound, Loader2, Link2, RotateCcw, ShieldCheck, Trash2 } from "lucide
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useI18n } from "@/components/i18n-provider";
 
 interface TelegramSettingsResponse {
   botToken: string;
@@ -43,13 +44,17 @@ interface WebhookStatusResponse {
 
 type ActionState = "idle" | "loading";
 
-function sourceLabel(source: "stored" | "env" | "none"): string {
-  if (source === "stored") return "stored in app";
-  if (source === "env") return "from .env";
-  return "not configured";
+function sourceLabel(
+  source: "stored" | "env" | "none",
+  t: (key: string, fallback?: string) => string
+): string {
+  if (source === "stored") return t("telegram.source.stored", "stored in app");
+  if (source === "env") return t("telegram.source.env", "from .env");
+  return t("telegram.source.none", "not configured");
 }
 
 export function TelegramIntegrationManager() {
+  const { t } = useI18n();
   const [botToken, setBotToken] = useState("");
   const [publicBaseUrl, setPublicBaseUrl] = useState("");
   const [storedMaskedToken, setStoredMaskedToken] = useState("");
@@ -85,7 +90,7 @@ export function TelegramIntegrationManager() {
       });
       const data = (await res.json()) as TelegramSettingsResponse;
       if (!res.ok) {
-        throw new Error(data.error || "Failed to load Telegram settings");
+        throw new Error(data.error || t("telegram.errors.loadSettings", "Failed to load Telegram settings"));
       }
       setStoredMaskedToken(data.botToken || "");
       setPublicBaseUrl(data.publicBaseUrl || "");
@@ -96,11 +101,11 @@ export function TelegramIntegrationManager() {
       );
       setUpdatedAt(data.updatedAt);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load Telegram settings");
+      setError(e instanceof Error ? e.message : t("telegram.errors.loadSettings", "Failed to load Telegram settings"));
     } finally {
       setLoadingSettings(false);
     }
-  }, []);
+  }, [t]);
 
   const loadWebhookStatus = useCallback(async () => {
     setWebhookState("loading");
@@ -110,7 +115,7 @@ export function TelegramIntegrationManager() {
       });
       const data = (await res.json()) as WebhookStatusResponse;
       if (!res.ok) {
-        throw new Error(data.error || "Failed to load webhook status");
+        throw new Error(data.error || t("telegram.errors.loadWebhook", "Failed to load webhook status"));
       }
       setWebhookStatus(data);
     } catch {
@@ -118,7 +123,7 @@ export function TelegramIntegrationManager() {
     } finally {
       setWebhookState("idle");
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadSettings();
@@ -134,10 +139,10 @@ export function TelegramIntegrationManager() {
       const trimmedBaseUrl = publicBaseUrl.trim();
 
       if (!trimmedBaseUrl) {
-        throw new Error("Public Base URL is required");
+        throw new Error(t("telegram.errors.baseUrlRequired", "Public Base URL is required"));
       }
       if (!trimmedToken && tokenSource === "none") {
-        throw new Error("Telegram bot token is required");
+        throw new Error(t("telegram.errors.tokenRequired", "Telegram bot token is required"));
       }
 
       const saveConfigRes = await fetch("/api/integrations/telegram/config", {
@@ -150,7 +155,7 @@ export function TelegramIntegrationManager() {
       });
       const saveConfigData = (await saveConfigRes.json()) as { error?: string };
       if (!saveConfigRes.ok) {
-        throw new Error(saveConfigData.error || "Failed to save Telegram settings");
+        throw new Error(saveConfigData.error || t("telegram.errors.saveSettings", "Failed to save Telegram settings"));
       }
 
       const setupRes = await fetch("/api/integrations/telegram/setup", {
@@ -166,18 +171,18 @@ export function TelegramIntegrationManager() {
         error?: string;
       };
       if (!setupRes.ok) {
-        throw new Error(setupData.error || "Failed to connect Telegram");
+        throw new Error(setupData.error || t("telegram.errors.connect", "Failed to connect Telegram"));
       }
 
-      setSuccess(setupData.message || "Telegram connected");
+      setSuccess(setupData.message || t("telegram.success.connected", "Telegram connected"));
       setBotToken("");
       await Promise.all([loadSettings(), loadWebhookStatus()]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to connect Telegram");
+      setError(e instanceof Error ? e.message : t("telegram.errors.connect", "Failed to connect Telegram"));
     } finally {
       setConnectState("idle");
     }
-  }, [botToken, loadSettings, loadWebhookStatus, publicBaseUrl, tokenSource]);
+  }, [botToken, loadSettings, loadWebhookStatus, publicBaseUrl, tokenSource, t]);
 
   const reconnectTelegram = useCallback(async () => {
     setReconnectState("loading");
@@ -195,17 +200,17 @@ export function TelegramIntegrationManager() {
         error?: string;
       };
       if (!res.ok) {
-        throw new Error(data.error || "Failed to reconnect Telegram");
+        throw new Error(data.error || t("telegram.errors.reconnect", "Failed to reconnect Telegram"));
       }
 
-      setSuccess(data.message || "Telegram reconnected");
+      setSuccess(data.message || t("telegram.success.reconnected", "Telegram reconnected"));
       await Promise.all([loadSettings(), loadWebhookStatus()]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to reconnect Telegram");
+      setError(e instanceof Error ? e.message : t("telegram.errors.reconnect", "Failed to reconnect Telegram"));
     } finally {
       setReconnectState("idle");
     }
-  }, [loadSettings, loadWebhookStatus]);
+  }, [loadSettings, loadWebhookStatus, t]);
 
   const disconnectTelegram = useCallback(async () => {
     setDisconnectState("loading");
@@ -222,22 +227,22 @@ export function TelegramIntegrationManager() {
         error?: string;
       };
       if (!res.ok) {
-        throw new Error(data.error || "Failed to disconnect Telegram");
+        throw new Error(data.error || t("telegram.errors.disconnect", "Failed to disconnect Telegram"));
       }
 
-      const messages = [data.message || "Telegram disconnected"];
-      if (data.webhookWarning) messages.push(`Webhook warning: ${data.webhookWarning}`);
+      const messages = [data.message || t("telegram.success.disconnected", "Telegram disconnected")];
+      if (data.webhookWarning) messages.push(`${t("telegram.webhook.warning", "Webhook warning")}: ${data.webhookWarning}`);
       if (data.note) messages.push(data.note);
       setSuccess(messages.join(" "));
 
       setBotToken("");
       await Promise.all([loadSettings(), loadWebhookStatus()]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to disconnect Telegram");
+      setError(e instanceof Error ? e.message : t("telegram.errors.disconnect", "Failed to disconnect Telegram"));
     } finally {
       setDisconnectState("idle");
     }
-  }, [loadSettings, loadWebhookStatus]);
+  }, [loadSettings, loadWebhookStatus, t]);
 
   const saveAllowedUsers = useCallback(async () => {
     setSaveAllowedUsersState("loading");
@@ -253,19 +258,19 @@ export function TelegramIntegrationManager() {
       });
       const data = (await res.json()) as TelegramSettingsResponse;
       if (!res.ok) {
-        throw new Error(data.error || "Failed to save allowed users");
+        throw new Error(data.error || t("telegram.errors.saveAllowed", "Failed to save allowed users"));
       }
       setAllowedUserIdsInput((data.allowedUserIds || []).join(", "));
       setPendingAccessCodes(
         typeof data.pendingAccessCodes === "number" ? data.pendingAccessCodes : 0
       );
-      setSuccess("Allowed Telegram user_id list updated");
+      setSuccess(t("telegram.success.allowedUpdated", "Allowed Telegram user_id list updated"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save allowed users");
+      setError(e instanceof Error ? e.message : t("telegram.errors.saveAllowed", "Failed to save allowed users"));
     } finally {
       setSaveAllowedUsersState("idle");
     }
-  }, [allowedUserIdsInput]);
+  }, [allowedUserIdsInput, t]);
 
   const generateAccessCode = useCallback(async () => {
     setGenerateCodeState("loading");
@@ -279,21 +284,21 @@ export function TelegramIntegrationManager() {
       });
       const data = (await res.json()) as TelegramAccessCodeResponse;
       if (!res.ok || !data.code) {
-        throw new Error(data.error || "Failed to generate access code");
+        throw new Error(data.error || t("telegram.errors.generateCode", "Failed to generate access code"));
       }
 
       setGeneratedAccessCode(data.code);
       setGeneratedAccessCodeExpiresAt(
         typeof data.expiresAt === "string" ? data.expiresAt : null
       );
-      setSuccess("Access code generated");
+      setSuccess(t("telegram.success.codeGenerated", "Access code generated"));
       await loadSettings();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to generate access code");
+      setError(e instanceof Error ? e.message : t("telegram.errors.generateCode", "Failed to generate access code"));
     } finally {
       setGenerateCodeState("idle");
     }
-  }, [loadSettings]);
+  }, [loadSettings, t]);
 
   const hasTokenConfigured = tokenSource !== "none";
   const hasBaseUrlConfigured = publicBaseUrl.trim().length > 0;
@@ -324,14 +329,14 @@ export function TelegramIntegrationManager() {
     <div className="space-y-4">
       <section className="rounded-lg border bg-card p-4 space-y-4">
         <div className="space-y-1">
-          <h3 className="text-lg font-medium">Telegram</h3>
+          <h3 className="text-lg font-medium">{t("telegram.title", "Telegram")}</h3>
           {!isConnected ? (
             <p className="text-sm text-muted-foreground">
-              Enter the bot token and Public Base URL, then click Connect Telegram.
+              {t("telegram.intro.disconnected", "Enter the bot token and Public Base URL, then click Connect Telegram.")}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Telegram is connected. You can reconnect or disconnect it.
+              {t("telegram.intro.connected", "Telegram is connected. You can reconnect or disconnect it.")}
             </p>
           )}
         </div>
@@ -339,7 +344,7 @@ export function TelegramIntegrationManager() {
         {!isConnected ? (
           <>
             <div className="space-y-2">
-              <Label htmlFor="telegram-bot-token">Bot Token</Label>
+              <Label htmlFor="telegram-bot-token">{t("telegram.botToken", "Bot Token")}</Label>
               <Input
                 id="telegram-bot-token"
                 type="password"
@@ -349,13 +354,13 @@ export function TelegramIntegrationManager() {
                 disabled={isBusy}
               />
               <p className="text-xs text-muted-foreground">
-                Current source: {sourceLabel(tokenSource)}
+                {t("telegram.currentSource", "Current source")}: {sourceLabel(tokenSource, t)}
                 {storedMaskedToken ? ` (${storedMaskedToken})` : ""}
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="telegram-public-base-url">Public Base URL</Label>
+              <Label htmlFor="telegram-public-base-url">{t("telegram.publicBaseUrl", "Public Base URL")}</Label>
               <Input
                 id="telegram-public-base-url"
                 type="text"
@@ -365,7 +370,7 @@ export function TelegramIntegrationManager() {
                 disabled={isBusy}
               />
               <p className="text-xs text-muted-foreground">
-                Webhook endpoint:{" "}
+                {t("telegram.webhookEndpoint", "Webhook endpoint")}:{" "}
                 <span className="font-mono">{publicBaseUrl || "https://..."}/api/integrations/telegram</span>
               </p>
             </div>
@@ -375,12 +380,12 @@ export function TelegramIntegrationManager() {
                 {connectState === "loading" ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Connecting...
+                    {t("telegram.connecting", "Connecting...")}
                   </>
                 ) : (
                   <>
                     <Link2 className="size-4" />
-                    Connect Telegram
+                    {t("telegram.connect", "Connect Telegram")}
                   </>
                 )}
               </Button>
@@ -390,15 +395,15 @@ export function TelegramIntegrationManager() {
           <>
             <div className="rounded-md border bg-muted/20 p-3 text-sm space-y-1">
               <div>
-                Token source: {sourceLabel(tokenSource)}
+                {t("telegram.tokenSource", "Token source")}: {sourceLabel(tokenSource, t)}
                 {storedMaskedToken ? ` (${storedMaskedToken})` : ""}
               </div>
               <div>
-                Public Base URL:{" "}
+                {t("telegram.publicBaseUrl", "Public Base URL")}:{" "}
                 <span className="font-mono text-xs break-all">{publicBaseUrl}</span>
               </div>
               {updatedAtLabel && (
-                <div className="text-xs text-muted-foreground">Updated: {updatedAtLabel}</div>
+                <div className="text-xs text-muted-foreground">{t("common.updated", "Updated")}: {updatedAtLabel}</div>
               )}
             </div>
 
@@ -411,12 +416,12 @@ export function TelegramIntegrationManager() {
                 {reconnectState === "loading" ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Reconnecting...
+                    {t("telegram.reconnecting", "Reconnecting...")}
                   </>
                 ) : (
                   <>
                     <RotateCcw className="size-4" />
-                    Reconnect Telegram
+                    {t("telegram.reconnect", "Reconnect Telegram")}
                   </>
                 )}
               </Button>
@@ -428,12 +433,12 @@ export function TelegramIntegrationManager() {
                 {disconnectState === "loading" ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Disconnecting...
+                    {t("telegram.disconnecting", "Disconnecting...")}
                   </>
                 ) : (
                   <>
                     <Trash2 className="size-4" />
-                    Disconnect Telegram
+                    {t("telegram.disconnect", "Disconnect Telegram")}
                   </>
                 )}
               </Button>
@@ -444,15 +449,14 @@ export function TelegramIntegrationManager() {
 
       <section className="rounded-lg border bg-card p-4 space-y-4">
         <div className="space-y-1">
-          <h4 className="font-medium">Access Control</h4>
+          <h4 className="font-medium">{t("telegram.accessControl", "Access Control")}</h4>
           <p className="text-sm text-muted-foreground">
-            Only users from this allowlist can chat with the bot. Others must send an access
-            code first.
+            {t("telegram.accessControlDesc", "Only users from this allowlist can chat with the bot. Others must send an access code first.")}
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="telegram-allowed-user-ids">Allowed Telegram user_id</Label>
+          <Label htmlFor="telegram-allowed-user-ids">{t("telegram.allowedUsers", "Allowed Telegram user_id")}</Label>
           <Input
             id="telegram-allowed-user-ids"
             type="text"
@@ -462,7 +466,7 @@ export function TelegramIntegrationManager() {
             disabled={isBusy}
           />
           <p className="text-xs text-muted-foreground">
-            Use comma, space, or newline as separator.
+            {t("telegram.allowedUsersHelp", "Use comma, space, or newline as separator.")}
           </p>
         </div>
 
@@ -475,12 +479,12 @@ export function TelegramIntegrationManager() {
             {saveAllowedUsersState === "loading" ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                Saving...
+                {t("common.saving", "Saving...")}
               </>
             ) : (
               <>
                 <ShieldCheck className="size-4" />
-                Save Allowlist
+                {t("telegram.saveAllowlist", "Save Allowlist")}
               </>
             )}
           </Button>
@@ -492,27 +496,27 @@ export function TelegramIntegrationManager() {
             {generateCodeState === "loading" ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                Generating...
+                {t("common.generating", "Generating...")}
               </>
             ) : (
               <>
                 <KeyRound className="size-4" />
-                Generate Access Code
+                {t("telegram.generateCode", "Generate Access Code")}
               </>
             )}
           </Button>
         </div>
 
         <div className="rounded-md border bg-muted/20 p-3 text-sm space-y-1">
-          <div>Pending access codes: {pendingAccessCodes}</div>
+          <div>{t("telegram.pendingCodes", "Pending access codes")}: {pendingAccessCodes}</div>
           {generatedAccessCode && (
             <div>
-              Latest code: <span className="font-mono">{generatedAccessCode}</span>
+              {t("telegram.latestCode", "Latest code")}: <span className="font-mono">{generatedAccessCode}</span>
             </div>
           )}
           {generatedAccessCodeExpiresAt && (
             <div className="text-xs text-muted-foreground">
-              Expires at: {new Date(generatedAccessCodeExpiresAt).toLocaleString()}
+              {t("common.expiresAt", "Expires at")}: {new Date(generatedAccessCodeExpiresAt).toLocaleString()}
             </div>
           )}
         </div>
@@ -521,33 +525,33 @@ export function TelegramIntegrationManager() {
       {isConnected && (
         <section className="rounded-lg border bg-card p-4 space-y-4">
           <div className="space-y-1">
-            <h4 className="font-medium">Webhook Status</h4>
+            <h4 className="font-medium">{t("telegram.webhook.status", "Webhook Status")}</h4>
             <p className="text-sm text-muted-foreground">
-              Current webhook status from the latest check.
+              {t("telegram.webhook.desc", "Current webhook status from the latest check.")}
             </p>
           </div>
 
           {webhookState === "loading" && (
-            <p className="text-sm text-muted-foreground">Loading webhook status...</p>
+            <p className="text-sm text-muted-foreground">{t("telegram.webhook.loading", "Loading webhook status...")}</p>
           )}
 
           {webhookStatus?.webhook && (
             <div className="rounded-md border bg-muted/20 p-3 text-sm space-y-1">
               <div>
-                URL:{" "}
+                {t("common.url", "URL")}:{" "}
                 <span className="font-mono text-xs break-all">
                   {webhookStatus.webhook.url || "(empty)"}
                 </span>
               </div>
-              <div>Pending updates: {webhookStatus.webhook.pendingUpdateCount}</div>
+              <div>{t("telegram.webhook.pendingUpdates", "Pending updates")}: {webhookStatus.webhook.pendingUpdateCount}</div>
               {webhookStatus.webhook.lastErrorMessage && (
                 <div className="text-red-600">
-                  Last error: {webhookStatus.webhook.lastErrorMessage}
+                  {t("telegram.webhook.lastError", "Last error")}: {webhookStatus.webhook.lastErrorMessage}
                 </div>
               )}
               {webhookStatus.webhook.lastErrorDate && (
                 <div className="text-xs text-muted-foreground">
-                  Last error at:{" "}
+                  {t("telegram.webhook.lastErrorAt", "Last error at")}:{" "}
                   {new Date(webhookStatus.webhook.lastErrorDate * 1000).toLocaleString()}
                 </div>
               )}
@@ -556,7 +560,7 @@ export function TelegramIntegrationManager() {
 
           {webhookState !== "loading" && !webhookStatus?.webhook && (
             <p className="text-sm text-muted-foreground">
-              {webhookStatus?.message || "Webhook status is not loaded yet."}
+              {webhookStatus?.message || t("telegram.webhook.notLoaded", "Webhook status is not loaded yet.")}
             </p>
           )}
         </section>

@@ -136,7 +136,7 @@ export default function MemoryPage() {
                     <Input
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search memories..."
+                      placeholder={t("memory.searchPlaceholder", "Search memories...")}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") handleSearch();
                       }}
@@ -162,7 +162,7 @@ export default function MemoryPage() {
                   {memories.length === 0 && (
                     <div className="text-center py-12 text-muted-foreground">
                       <Brain className="size-12 mx-auto mb-4 opacity-50" />
-                      <p>No memories found.</p>
+                      <p>{t("memory.empty", "No memories found.")}</p>
                       <p className="text-xs mt-1">
                         The agent will save memories as it learns from conversations.
                       </p>

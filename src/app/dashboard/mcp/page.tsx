@@ -7,6 +7,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Globe, Loader2, Terminal, Wrench } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
+import { useI18n } from "@/components/i18n-provider";
 
 interface McpServerItem {
   id: string;
@@ -75,6 +76,7 @@ function normalizeServers(input: unknown): McpServerItem[] {
 }
 
 export default function McpPage() {
+  const { t } = useI18n();
   const { projects, setProjects, activeProjectId } = useAppStore();
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [servers, setServers] = useState<McpServerItem[]>([]);
@@ -186,11 +188,11 @@ export default function McpPage() {
           <SidebarInset>
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 max-w-5xl mx-auto w-full">
               <div className="space-y-1">
-                <h2 className="text-2xl font-semibold">MCP Servers</h2>
+                <h2 className="text-2xl font-semibold">{t("mcp.title", "MCP Servers")}</h2>
                 <p className="text-sm text-muted-foreground">
-                  View MCP servers configured for each project from
+                  {t("mcp.subtitlePrefix", "View MCP servers configured for each project from")}
                   <span className="font-mono"> .meta/mcp/servers.json </span>
-                  and switch between projects.
+                  {t("mcp.subtitleSuffix", "and switch between projects.")}
                 </p>
               </div>
 
@@ -202,10 +204,10 @@ export default function McpPage() {
                   disabled={projectsLoading || projects.length === 0}
                 >
                   {projectsLoading && (
-                    <option value="">Loading projects...</option>
+                    <option value="">{t("common.loadingProjects", "Loading projects...")}</option>
                   )}
                   {!projectsLoading && projects.length === 0 && (
-                    <option value="">No projects available</option>
+                    <option value="">{t("common.noProjects", "No projects available")}</option>
                   )}
                   {!projectsLoading &&
                     projects.map((project) => (
@@ -218,7 +220,7 @@ export default function McpPage() {
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search MCP servers..."
+                  placeholder={t("mcp.searchPlaceholder", "Search MCP servers...")}
                   className="md:max-w-sm"
                 />
               </div>
@@ -233,11 +235,11 @@ export default function McpPage() {
                 <div className="flex items-center justify-between border-b px-4 py-3">
                   <div className="flex items-center gap-2">
                     <Wrench className="size-4 text-primary" />
-                    <h3 className="text-sm font-medium">Servers In Project</h3>
+                    <h3 className="text-sm font-medium">{t("mcp.serversInProject", "Servers In Project")}</h3>
                   </div>
                   {!loading && selectedProjectId && (
                     <span className="text-xs text-muted-foreground">
-                      {servers.length} total
+                      {servers.length} {t("common.total", "total")}
                     </span>
                   )}
                 </div>
@@ -245,15 +247,15 @@ export default function McpPage() {
                 {loading ? (
                   <div className="py-12 text-center text-muted-foreground flex items-center justify-center gap-2">
                     <Loader2 className="size-4 animate-spin" />
-                    Loading MCP servers...
+                    {t("mcp.loadingServers", "Loading MCP servers...")}
                   </div>
                 ) : !selectedProjectId ? (
                   <div className="p-4 text-sm text-muted-foreground">
-                    Select a project to view MCP servers.
+                    {t("mcp.selectProject", "Select a project to view MCP servers.")}
                   </div>
                 ) : filteredServers.length === 0 ? (
                   <div className="p-4 text-sm text-muted-foreground">
-                    No MCP servers found for this project.
+                    {t("mcp.noServers", "No MCP servers found for this project.")}
                   </div>
                 ) : (
                   <div className="divide-y">

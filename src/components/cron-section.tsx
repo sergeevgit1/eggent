@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useI18n } from "@/components/i18n-provider";
 
 type CronSchedule =
   | { kind: "at"; at: string }
@@ -136,6 +137,7 @@ interface CronSectionProps {
 }
 
 export function CronSection({ projectId }: CronSectionProps) {
+  const { t } = useI18n();
   const [form, setForm] = useState<CronFormState>(DEFAULT_FORM);
   const [status, setStatus] = useState<CronStatus | null>(null);
   const [jobs, setJobs] = useState<CronJob[]>([]);

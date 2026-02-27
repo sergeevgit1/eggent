@@ -14,6 +14,7 @@ import {
 import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 import { useBackgroundSync } from "@/hooks/use-background-sync";
+import { useI18n } from "@/components/i18n-provider";
 
 interface FileEntry {
   name: string;
@@ -50,6 +51,7 @@ interface TreeNodeProps {
   type: "file" | "directory";
   depth: number;
   refreshToken: number;
+  t: (key: string, fallback?: string) => string;
 }
 
 function TreeNode({
@@ -59,6 +61,7 @@ function TreeNode({
   type,
   depth,
   refreshToken,
+  t,
 }: TreeNodeProps) {
   const { currentPath, setCurrentPath } = useAppStore();
   const [expanded, setExpanded] = useState(false);
@@ -169,8 +172,8 @@ function TreeNode({
           href={downloadHref}
           download={name}
           className="absolute right-1 top-1/2 inline-flex size-5 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground opacity-0 transition hover:bg-accent hover:text-foreground group-hover/tree-node:opacity-100"
-          title={`Download ${name}`}
-          aria-label={`Download ${name}`}
+          title={`${t("files.download", "Download")} ${name}`}
+          aria-label={`${t("files.download", "Download")} ${name}`}
         >
           <Download className="size-3.5" />
         </a>
@@ -183,7 +186,7 @@ function TreeNode({
               className="text-[10px] text-muted-foreground block"
               style={{ paddingLeft: `${(depth + 1) * 12 + 4}px` }}
             >
-              Loading...
+              {t("common.loading", "Loading...")}
             </span>
           )}
           {children?.map((child) => (
@@ -197,6 +200,7 @@ function TreeNode({
               type={child.type}
               depth={depth + 1}
               refreshToken={refreshToken}
+              t={t}
             />
           ))}
           {children?.length === 0 && !loading && (
@@ -204,7 +208,7 @@ function TreeNode({
               className="text-[10px] text-muted-foreground block py-0.5"
               style={{ paddingLeft: `${(depth + 1) * 12 + 4}px` }}
             >
-              Empty
+              {t("files.empty", "Empty")}
             </span>
           )}
         </div>
@@ -218,6 +222,7 @@ interface FileTreeProps {
 }
 
 export function FileTree({ projectId }: FileTreeProps) {
+  const { t } = useI18n();
   const { currentPath, setCurrentPath } = useAppStore();
   const [rootEntries, setRootEntries] = useState<FileEntry[] | null>(null);
   const refreshToken = useBackgroundSync({
@@ -264,11 +269,11 @@ export function FileTree({ projectId }: FileTreeProps) {
 
       {rootEntries === null ? (
         <span className="text-[10px] text-muted-foreground block pl-4 py-1">
-          Loading...
+          {t("common.loading", "Loading...")}
         </span>
       ) : rootEntries.length === 0 ? (
         <span className="text-[10px] text-muted-foreground block pl-4 py-1">
-          No files
+          {t("files.noFiles", "No files")}
         </span>
       ) : (
         rootEntries.map((entry) => (
@@ -280,6 +285,7 @@ export function FileTree({ projectId }: FileTreeProps) {
             type={entry.type}
             depth={1}
             refreshToken={refreshToken}
+            t={t}
           />
         ))
       )}

@@ -6,8 +6,10 @@ import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { useAppStore } from "@/store/app-store";
 import { CronSection } from "@/components/cron-section";
+import { useI18n } from "@/components/i18n-provider";
 
 export default function CronPage() {
+  const { t } = useI18n();
   const { projects, setProjects, activeProjectId } = useAppStore();
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [projectsLoading, setProjectsLoading] = useState(false);
@@ -64,7 +66,7 @@ export default function CronPage() {
                   Cron Jobs
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Manage scheduled jobs per project and switch between projects.
+                  {t("cron.subtitle", "Manage scheduled jobs per project and switch between projects.")}
                 </p>
               </div>
 
@@ -76,10 +78,10 @@ export default function CronPage() {
                   disabled={projectsLoading || projects.length === 0}
                 >
                   {projectsLoading && (
-                    <option value="">Loading projects...</option>
+                    <option value="">{t("common.loadingProjects", "Loading projects...")}</option>
                   )}
                   {!projectsLoading && projects.length === 0 && (
-                    <option value="">No projects available</option>
+                    <option value="">{t("common.noProjects", "No projects available")}</option>
                   )}
                   {!projectsLoading &&
                     projects.map((project) => (
@@ -92,7 +94,7 @@ export default function CronPage() {
 
               {!selectedProjectId ? (
                 <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-                  Select a project to manage cron jobs.
+                  {t("cron.selectProject", "Select a project to manage cron jobs.")}
                 </div>
               ) : (
                 <CronSection key={selectedProjectId} projectId={selectedProjectId} />
