@@ -457,6 +457,41 @@ export async function runAgent(options: {
 /**
  * Non-streaming agent turn for background tasks (cron/scheduler).
  */
+function extractAssistantTextFromModelMessages(messages: ModelMessage[] | undefined): string {
+  if (!Array.isArray(messages) || messages.length === 0) return "";
+
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const msg = messages[i];
+    if (msg.role !== "assistant") continue;
+
+    if (typeof msg.content === "string") {
+      const value = msg.content.trim();
+      if (value) return value;
+      continue;
+    }
+
+    if (Array.isArray(msg.content)) {
+      const parts: string[] = [];
+      for (const part of msg.content) {
+        if (
+          typeof part === "object" &&
+          part !== null &&
+          "type" in part &&
+          part.type === "text" &&
+          "text" in part &&
+          typeof (part as { text?: unknown }).text === "string"
+        ) {
+          parts.push((part as { text: string }).text);
+        }
+      }
+      const value = parts.join("").trim();
+      if (value) return value;
+    }
+  }
+
+  return "";
+}
+
 export async function runAgentText(options: {
   chatId: string;
   userMessage: string;
@@ -533,7 +568,13 @@ export async function runAgentText(options: {
       maxOutputTokens: settings.chatModel.maxTokens ?? 4096,
     });
 
-    const text = generated.text ?? "";
+    const responseMessages = (
+      generated as unknown as { response?: { messages?: ModelMessage[] } }
+    ).response?.messages;
+
+    const text = (generated.text ?? "").trim();
+    const fallbackText = extractAssistantTextFromModelMessages(responseMessages);
+    const finalText = text || fallbackText || "Готово.";
 
     try {
       const latest = await getChat(options.chatId);
@@ -546,10 +587,6 @@ export async function runAgentText(options: {
           createdAt: now,
         });
 
-        const responseMessages = (
-          generated as unknown as { response?: { messages?: ModelMessage[] } }
-        ).response?.messages;
-
         if (Array.isArray(responseMessages) && responseMessages.length > 0) {
           for (const msg of responseMessages) {
             latest.messages.push(...convertModelMessageToChatMessages(msg, now));
@@ -558,7 +595,7 @@ export async function runAgentText(options: {
           latest.messages.push({
             id: crypto.randomUUID(),
             role: "assistant",
-            content: text,
+            content: finalText,
             createdAt: now,
           });
         }
@@ -576,7 +613,7 @@ export async function runAgentText(options: {
       reason: "agent_turn_finished",
     });
 
-    return text;
+    return finalText;
   } finally {
     if (mcpCleanup) {
       try {
