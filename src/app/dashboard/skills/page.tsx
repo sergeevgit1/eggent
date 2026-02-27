@@ -15,6 +15,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { useI18n } from "@/components/i18n-provider";
 
 interface BundledSkillItem {
   name: string;
@@ -33,6 +34,7 @@ interface InstalledSkillItem {
 }
 
 export default function SkillsPage() {
+  const { t } = useI18n();
   const { projects, setProjects, activeProjectId } = useAppStore();
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [bundledSkills, setBundledSkills] = useState<BundledSkillItem[]>([]);
@@ -238,7 +240,7 @@ export default function SkillsPage() {
           <SidebarInset>
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 max-w-5xl mx-auto w-full">
               <div className="space-y-1">
-                <h2 className="text-2xl font-semibold">Skills</h2>
+                <h2 className="text-2xl font-semibold">{t("nav.skills", "Skills")}</h2>
                 <p className="text-sm text-muted-foreground">
                   Browse installed skills of the selected project and install bundled skills.
                   Installed skills live in
@@ -255,7 +257,7 @@ export default function SkillsPage() {
                   disabled={projectsLoading || projects.length === 0}
                 >
                   {projectsLoading && (
-                    <option value="">Loading projects...</option>
+                    <option value="">{t("common.loadingProjects", "Loading projects...")}</option>
                   )}
                   {!projectsLoading && projects.length === 0 && (
                     <option value="">No projects available</option>
@@ -301,7 +303,7 @@ export default function SkillsPage() {
                   </div>
                 ) : !selectedProjectId ? (
                   <div className="p-4 text-sm text-muted-foreground">
-                    Select a project to view installed skills.
+                    {t("skills.selectProject", "Select a project to view installed skills.")}
                   </div>
                 ) : filteredInstalledSkills.length === 0 ? (
                   <div className="p-4 text-sm text-muted-foreground">

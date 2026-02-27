@@ -11,8 +11,10 @@ import { Check, Loader2, Save, ShieldCheck } from "lucide-react";
 import { ChatModelWizard, EmbeddingsModelWizard } from "@/components/settings/model-wizards";
 import { updateSettingsByPath } from "@/lib/settings/update-settings-path";
 import type { AppSettings } from "@/lib/types";
+import { useI18n } from "@/components/i18n-provider";
 
 export default function SettingsPage() {
+  const { t } = useI18n();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -60,11 +62,11 @@ export default function SettingsPage() {
     const passwordConfirm = authPasswordConfirm.trim();
 
     if (!username) {
-      setAuthError("Username is required.");
+      setAuthError(t("auth.usernameRequired", "Username is required."));
       return;
     }
     if (password.length < 8) {
-      setAuthError("Password must be at least 8 characters.");
+      setAuthError(t("auth.passwordMin", "Password must be at least 8 characters."));
       return;
     }
     if (password !== passwordConfirm) {
@@ -147,7 +149,7 @@ export default function SettingsPage() {
             <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 max-w-3xl mx-auto w-full overflow-y-auto">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-semibold">Settings</h2>
+                  <h2 className="text-2xl font-semibold">{t("nav.settings", "Settings")}</h2>
                   <p className="text-sm text-muted-foreground">
                     Configure AI models, tools, and preferences.
                   </p>
