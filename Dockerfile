@@ -31,6 +31,7 @@ RUN apt-get update \
     bash \
     ca-certificates \
     curl \
+    docker.io \
     git \
     jq \
     python3 \

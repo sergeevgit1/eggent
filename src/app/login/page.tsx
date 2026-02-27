@@ -6,6 +6,7 @@ import { Loader2, LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useI18n } from "@/components/i18n-provider";
 
 function normalizeNextPath(value: string | null): string {
   if (!value) return "/dashboard";
@@ -21,6 +22,8 @@ function LoginPageClient() {
   const [password, setPassword] = useState("admin");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { locale, setLocale, t } = useI18n();
 
   const nextPath = useMemo(
     () => normalizeNextPath(searchParams.get("next")),
@@ -70,16 +73,34 @@ function LoginPageClient() {
         <section className="w-full rounded-xl border bg-card p-6 shadow-sm">
           <div className="mb-6 flex items-center gap-2">
             <LockKeyhole className="size-5 text-primary" />
-            <h1 className="text-xl font-semibold">Eggent Login</h1>
+            <h1 className="text-xl font-semibold">{t("login.title", "Eggent Login")}</h1>
+            <div className="ml-auto flex gap-1">
+              <Button
+                type="button"
+                variant={locale === "en" ? "default" : "outline"}
+                className="h-7 px-2 text-xs"
+                onClick={() => setLocale("en")}
+              >
+                EN
+              </Button>
+              <Button
+                type="button"
+                variant={locale === "ru" ? "default" : "outline"}
+                className="h-7 px-2 text-xs"
+                onClick={() => setLocale("ru")}
+              >
+                RU
+              </Button>
+            </div>
           </div>
 
           <p className="mb-6 text-sm text-muted-foreground">
-            Default credentials: <span className="font-mono">admin / admin</span>
+            {t("login.defaultCreds", "Default credentials:")} <span className="font-mono">admin / admin</span>
           </p>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">{t("login.username", "Username")}</Label>
               <Input
                 id="username"
                 autoComplete="username"
@@ -91,7 +112,7 @@ function LoginPageClient() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("login.password", "Password")}</Label>
               <Input
                 id="password"
                 type="password"
@@ -109,10 +130,10 @@ function LoginPageClient() {
               {submitting ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Signing in...
+                  {t("login.signingIn", "Signing in...")}
                 </>
               ) : (
-                "Sign In"
+                t("login.signin", "Sign In")
               )}
             </Button>
           </form>
@@ -124,7 +145,7 @@ function LoginPageClient() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<main className="p-4 text-sm text-muted-foreground">Loading...</main>}>
+    <Suspense fallback={<main className="p-4 text-sm text-muted-foreground">Загрузка...</main>}>
       <LoginPageClient />
     </Suspense>
   );

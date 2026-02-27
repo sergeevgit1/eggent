@@ -5,7 +5,7 @@ import { getSettings } from "@/lib/storage/settings-store";
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const provider = searchParams.get("provider") || "";
-    let apiKey = searchParams.get("apiKey") || "";
+    let apiKey = (searchParams.get("apiKey") || "").trim();
     const type = searchParams.get("type") || "chat"; // "chat" | "embedding"
 
     // If apiKey is masked or missing, try to get it from server-side settings
@@ -136,6 +136,29 @@ export async function GET(req: NextRequest) {
                         return m.id.includes("gemini");
                     })
                     .sort((a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name));
+                break;
+            }
+
+            case "custom": {
+                const rawBaseUrl = (searchParams.get("baseUrl") || "").trim();
+                if (!rawBaseUrl) {
+                    throw new Error("Custom provider requires baseUrl");
+                }
+                const normalizedBaseUrl = rawBaseUrl.replace(/\/+$/, "").replace(/\/v1$/, "");
+                const res = await fetch(`${normalizedBaseUrl}/v1/models`, {
+                    headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined,
+                });
+                if (!res.ok) throw new Error(`Custom provider API error: ${res.status}`);
+                const data = await res.json();
+                models = (data.data || [])
+                    .map((m: { id: string }) => ({ id: m.id, name: m.id }))
+                    .filter((m: { id: string }) => {
+                        if (type === "embedding") {
+                            return m.id.includes("embedding") || m.id.includes("embed");
+                        }
+                        return true;
+                    })
+                    .sort((a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id));
                 break;
             }
 

@@ -36,6 +36,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/components/i18n-provider";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const router = useRouter();
@@ -51,6 +52,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     activeProjectId,
     setActiveProjectId,
   } = useAppStore();
+  const { locale, setLocale, t } = useI18n();
   const projectsTick = useBackgroundSync({
     topics: ["projects", "global"],
   });
@@ -175,15 +177,33 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenuItem>
         </SidebarMenu>
         {/* New Chat button */}
-        <div className="px-3 pt-2">
+        <div className="px-3 pt-2 space-y-2">
           <Button
             variant="outline"
             className="w-full justify-start gap-2"
             onClick={handleNewChat}
           >
             <MessageSquarePlus className="size-4" />
-            New Chat
+            {t("chat.new", "New Chat")}
           </Button>
+          <div className="flex gap-1">
+            <Button
+              type="button"
+              variant={locale === "en" ? "default" : "outline"}
+              className="h-7 px-2 text-xs"
+              onClick={() => setLocale("en")}
+            >
+              EN
+            </Button>
+            <Button
+              type="button"
+              variant={locale === "ru" ? "default" : "outline"}
+              className="h-7 px-2 text-xs"
+              onClick={() => setLocale("ru")}
+            >
+              RU
+            </Button>
+          </div>
         </div>
       </SidebarHeader>
 
@@ -191,13 +211,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
         {/* Project selector */}
         <SidebarGroup>
-          <SidebarGroupLabel>Project</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("nav.project", "Project")}</SidebarGroupLabel>
           <SidebarMenu>
             {projects.length === 0 && (
               <SidebarMenuItem>
                 <SidebarMenuButton disabled>
                   <span className="text-muted-foreground text-xs">
-                    No projects yet
+                    {t("empty.projects", "No projects yet")}
                   </span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -220,7 +240,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarGroup>
           <SidebarGroupLabel>
             <FolderOpen className="size-3.5 mr-1" />
-            Files
+            {t("nav.files", "Files")}
           </SidebarGroupLabel>
           <div className="px-2">
             <FileTree projectId={activeProjectId ?? "none"} />
@@ -231,14 +251,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarGroup>
           <SidebarGroupLabel>
             <MessagesSquare className="size-3.5 mr-1" />
-            Chats
+            {t("nav.chats", "Chats")}
           </SidebarGroupLabel>
           <SidebarMenu>
             {chats.length === 0 && (
               <SidebarMenuItem>
                 <SidebarMenuButton disabled>
                   <span className="text-muted-foreground text-xs">
-                    No chats yet
+                    {t("empty.chats", "No chats yet")}
                   </span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -266,13 +286,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarFooter>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("nav.navigation", "Navigation")}</SidebarGroupLabel>
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
                 <Link href="/dashboard/projects">
                   <FolderOpen className="size-4" />
-                  <span>Projects</span>
+                  <span>{t("nav.projects", "Projects")}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -280,7 +300,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuButton asChild>
                 <Link href="/dashboard/memory">
                   <Brain className="size-4" />
-                  <span>Memory</span>
+                  <span>{t("nav.memory", "Memory")}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -288,7 +308,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuButton asChild>
                 <Link href="/dashboard/skills">
                   <Puzzle className="size-4" />
-                  <span>Skills</span>
+                  <span>{t("nav.skills", "Skills")}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -304,7 +324,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuButton asChild>
                 <Link href="/dashboard/cron">
                   <CalendarClock className="size-4" />
-                  <span>Cron Jobs</span>
+                  <span>{t("nav.cron", "Cron Jobs")}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -312,7 +332,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuButton asChild>
                 <Link href="/dashboard/settings">
                   <Settings2 className="size-4" />
-                  <span>Settings</span>
+                  <span>{t("nav.settings", "Settings")}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -328,7 +348,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuButton asChild>
                 <Link href="/dashboard/messengers">
                   <MessagesSquare className="size-4" />
-                  <span>Messengers</span>
+                  <span>{t("nav.messengers", "Messengers")}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -340,14 +360,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   rel="noopener noreferrer"
                 >
                   <LifeBuoy className="size-4" />
-                  <span>Documentation</span>
+                  <span>{t("nav.docs", "Documentation")}</span>
                 </a>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton onClick={handleLogout}>
                 <LogOut className="size-4" />
-                <span>Logout</span>
+                <span>{t("nav.logout", "Logout")}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

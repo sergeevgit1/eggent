@@ -23,6 +23,9 @@ services:
       - "${APP_BIND_HOST:-127.0.0.1}:${APP_PORT:-3000}:3000"
     volumes:
       - ./data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    group_add:
+      - "${DOCKER_GID:-111}"
     healthcheck:
       test:
         [

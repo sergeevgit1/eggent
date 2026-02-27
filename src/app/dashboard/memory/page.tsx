@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Brain, Search, Trash2 } from "lucide-react";
 import { KnowledgeSection } from "@/components/knowledge-section";
+import { useI18n } from "@/components/i18n-provider";
 
 interface MemoryItem {
   id: string;
@@ -25,6 +26,7 @@ interface ProjectOption {
 }
 
 export default function MemoryPage() {
+  const { t } = useI18n();
   const [memories, setMemories] = useState<MemoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -105,9 +107,9 @@ export default function MemoryPage() {
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 max-w-4xl mx-auto w-full">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-2xl font-semibold">Memory Dashboard</h2>
+                  <h2 className="text-2xl font-semibold">{t("nav.memory", "Memory")}</h2>
                   <p className="text-sm text-muted-foreground">
-                    Browse and search the agent&apos;s persistent vector memory.
+                    {t("memory.subtitle", "Browse and search the agent's persistent vector memory.")}
                   </p>
                 </div>
                 <select
@@ -116,7 +118,7 @@ export default function MemoryPage() {
                   className="rounded-md border bg-background px-3 py-2 text-sm max-w-xs"
                 >
                   {isLoadingProjects && (
-                    <option disabled>Loading projects...</option>
+                    <option disabled>{t("common.loadingProjects", "Loading projects...")}</option>
                   )}
                   {!isLoadingProjects &&
                     projects.map((project) => (
