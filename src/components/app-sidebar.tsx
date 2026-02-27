@@ -5,19 +5,11 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
-  CalendarClock,
-  Cable,
   Bot,
-  Brain,
   FolderOpen,
-  LifeBuoy,
-  LogOut,
   MessageSquarePlus,
   MessagesSquare,
-  Puzzle,
-  Settings2,
   Trash2,
-  Wrench,
 } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
 import { FileTree } from "@/components/file-tree";
@@ -37,6 +29,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/i18n-provider";
+import { SystemNavigationSheet } from "@/components/system-navigation-sheet";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const router = useRouter();
@@ -142,17 +135,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     e.stopPropagation();
     await fetch(`/api/chat/history?id=${id}`, { method: "DELETE" });
     removeChat(id);
-  };
-
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } catch {
-      // ignore logout request errors and continue redirect
-    } finally {
-      router.push("/login");
-      router.refresh();
-    }
   };
 
   return (
@@ -267,93 +249,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
 
       <SidebarFooter>
-        <SidebarGroup>
-          <SidebarGroupLabel>{t("nav.navigation", "Navigation")}</SidebarGroupLabel>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/dashboard/projects">
-                  <FolderOpen className="size-4" />
-                  <span>{t("nav.projects", "Projects")}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/dashboard/memory">
-                  <Brain className="size-4" />
-                  <span>{t("nav.memory", "Memory")}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/dashboard/skills">
-                  <Puzzle className="size-4" />
-                  <span>{t("nav.skills", "Skills")}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/dashboard/mcp">
-                  <Wrench className="size-4" />
-                  <span>MCP</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/dashboard/cron">
-                  <CalendarClock className="size-4" />
-                  <span>{t("nav.cron", "Cron Jobs")}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/dashboard/settings">
-                  <Settings2 className="size-4" />
-                  <span>{t("nav.settings", "Settings")}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/dashboard/api">
-                  <Cable className="size-4" />
-                  <span>API</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/dashboard/messengers">
-                  <MessagesSquare className="size-4" />
-                  <span>{t("nav.messengers", "Messengers")}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <a
-                  href="https://github.com/eggent-ai/eggent"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <LifeBuoy className="size-4" />
-                  <span>{t("nav.docs", "Documentation")}</span>
-                </a>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton onClick={handleLogout}>
-                <LogOut className="size-4" />
-                <span>{t("nav.logout", "Logout")}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
+        <div className="p-2">
+          <SystemNavigationSheet mode="profile" />
+        </div>
       </SidebarFooter>
     </Sidebar>
   );

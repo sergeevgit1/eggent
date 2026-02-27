@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useSidebar } from "@/components/ui/sidebar"
 import { useI18n } from "@/components/i18n-provider"
+import { SystemNavigationSheet } from "@/components/system-navigation-sheet"
 
 export function SiteHeader({ title }: { title?: string }) {
   const { toggleSidebar } = useSidebar()
@@ -40,6 +41,7 @@ export function SiteHeader({ title }: { title?: string }) {
           })()}
         </h1>
         <div className="ml-auto flex items-center gap-2">
+          <SystemNavigationSheet mode="header" />
           <select
             aria-label="Language"
             value={locale}
