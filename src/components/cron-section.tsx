@@ -93,16 +93,16 @@ const DEFAULT_FORM: CronFormState = {
   timeoutSeconds: "",
 };
 
-function formatDateTime(ms?: number | null): string {
+function formatDateTime(ms: number | null | undefined, t: (k: string, f?: string) => string): string {
   if (typeof ms !== "number" || !Number.isFinite(ms)) {
-    return "n/a";
+    return t("cron.na", "n/a");
   }
   return new Date(ms).toLocaleString();
 }
 
-function formatDuration(ms?: number): string {
+function formatDuration(ms: number | undefined, t: (k: string, f?: string) => string): string {
   if (typeof ms !== "number" || !Number.isFinite(ms)) {
-    return "n/a";
+    return t("cron.na", "n/a");
   }
   if (ms < 1_000) {
     return `${ms}ms`;
@@ -110,17 +110,17 @@ function formatDuration(ms?: number): string {
   return `${(ms / 1_000).toFixed(1)}s`;
 }
 
-function scheduleSummary(schedule: CronSchedule): string {
+function scheduleSummary(schedule: CronSchedule, t: (k: string, f?: string) => string): string {
   if (schedule.kind === "at") {
-    return `At ${schedule.at}`;
+    return `${t("cron.at", "At")} ${schedule.at}`;
   }
   if (schedule.kind === "every") {
-    return `Every ${schedule.everyMs}ms`;
+    return `${t("cron.every", "Every")} ${schedule.everyMs}ms`;
   }
   return schedule.tz ? `Cron ${schedule.expr} (${schedule.tz})` : `Cron ${schedule.expr}`;
 }
 
-async function readErrorMessage(res: Response): Promise<string> {
+async function readErrorMessage(res: Response, t: (k: string, f?: string) => string): Promise<string> {
   try {
     const body = (await res.json()) as { error?: unknown };
     if (typeof body.error === "string" && body.error.trim()) {
@@ -129,7 +129,7 @@ async function readErrorMessage(res: Response): Promise<string> {
   } catch {
     // no-op
   }
-  return `Request failed (${res.status})`;
+  return `${t("cron.requestFailed", "Request failed")} (${res.status})`;
 }
 
 interface CronSectionProps {
@@ -163,10 +163,10 @@ export function CronSection({ projectId }: CronSectionProps) {
       ]);
 
       if (!statusRes.ok) {
-        throw new Error(await readErrorMessage(statusRes));
+        throw new Error(await readErrorMessage(statusRes, t));
       }
       if (!jobsRes.ok) {
-        throw new Error(await readErrorMessage(jobsRes));
+        throw new Error(await readErrorMessage(jobsRes, t));
       }
 
       const statusData = (await statusRes.json()) as CronStatus;
@@ -191,7 +191,7 @@ export function CronSection({ projectId }: CronSectionProps) {
     try {
       const res = await fetch(`/api/projects/${projectId}/cron/${jobId}/runs?limit=100`);
       if (!res.ok) {
-        throw new Error(await readErrorMessage(res));
+        throw new Error(await readErrorMessage(res, t));
       }
       const data = (await res.json()) as { entries?: CronRunLogEntry[] };
       const entries = Array.isArray(data.entries) ? data.entries : [];
@@ -214,24 +214,24 @@ export function CronSection({ projectId }: CronSectionProps) {
     try {
       const name = form.name.trim();
       if (!name) {
-        throw new Error("Job name is required.");
+        throw new Error(t("cron.errors.jobNameRequired", "Job name is required."));
       }
       const message = form.message.trim();
       if (!message) {
-        throw new Error("Agent message is required.");
+        throw new Error(t("cron.errors.agentMessageRequired", "Agent message is required."));
       }
 
       let schedule: CronSchedule;
       if (form.scheduleKind === "at") {
         const atMs = Date.parse(form.scheduleAt);
         if (!Number.isFinite(atMs)) {
-          throw new Error("Invalid date/time for 'At' schedule.");
+          throw new Error(t("cron.errors.invalidAt", "Invalid date/time for 'At' schedule."));
         }
         schedule = { kind: "at", at: new Date(atMs).toISOString() };
       } else if (form.scheduleKind === "every") {
         const amount = Number(form.everyAmount);
         if (!Number.isFinite(amount) || amount <= 0) {
-          throw new Error("Interval amount must be a positive number.");
+          throw new Error(t("cron.errors.intervalPositive", "Interval amount must be a positive number."));
         }
         const multiplier =
           form.everyUnit === "minutes"
@@ -243,7 +243,7 @@ export function CronSection({ projectId }: CronSectionProps) {
       } else {
         const expr = form.cronExpr.trim();
         if (!expr) {
-          throw new Error("Cron expression is required.");
+          throw new Error(t("cron.errors.cronRequired", "Cron expression is required."));
         }
         schedule = {
           kind: "cron",
@@ -274,7 +274,7 @@ export function CronSection({ projectId }: CronSectionProps) {
         }),
       });
       if (!res.ok) {
-        throw new Error(await readErrorMessage(res));
+        throw new Error(await readErrorMessage(res, t));
       }
 
       setForm((prev) => ({
@@ -303,7 +303,7 @@ export function CronSection({ projectId }: CronSectionProps) {
         body: JSON.stringify({ enabled }),
       });
       if (!res.ok) {
-        throw new Error(await readErrorMessage(res));
+        throw new Error(await readErrorMessage(res, t));
       }
       await loadStatusAndJobs();
     } catch (err) {
@@ -321,7 +321,7 @@ export function CronSection({ projectId }: CronSectionProps) {
         method: "POST",
       });
       if (!res.ok) {
-        throw new Error(await readErrorMessage(res));
+        throw new Error(await readErrorMessage(res, t));
       }
       await Promise.all([loadStatusAndJobs(), loadRuns(job.id)]);
     } catch (err) {
@@ -332,7 +332,7 @@ export function CronSection({ projectId }: CronSectionProps) {
   }
 
   async function removeJob(job: CronJob) {
-    const confirmed = confirm(`Delete cron job "${job.name}"?`);
+    const confirmed = confirm(`${t("cron.confirm.deleteJob", "Delete cron job")} "${job.name}"?`);
     if (!confirmed) {
       return;
     }
@@ -343,7 +343,7 @@ export function CronSection({ projectId }: CronSectionProps) {
         method: "DELETE",
       });
       if (!res.ok) {
-        throw new Error(await readErrorMessage(res));
+        throw new Error(await readErrorMessage(res, t));
       }
       if (selectedJobId === job.id) {
         setSelectedJobId(null);
@@ -362,7 +362,7 @@ export function CronSection({ projectId }: CronSectionProps) {
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium flex items-center gap-2">
           <CalendarClock className="size-5 text-primary" />
-          Cron Jobs
+          {t("cron.title", "Cron Jobs")}
         </h3>
         <Button
           variant="outline"
@@ -372,7 +372,7 @@ export function CronSection({ projectId }: CronSectionProps) {
           disabled={loading || busy}
         >
           {loading ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-          Refresh
+          {t("cron.refresh", "Refresh")}
         </Button>
       </div>
 
@@ -384,38 +384,38 @@ export function CronSection({ projectId }: CronSectionProps) {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="border rounded-lg bg-card p-4 space-y-3">
-          <p className="text-sm font-medium">Scheduler Status</p>
+          <p className="text-sm font-medium">{t("cron.schedulerStatus", "Scheduler Status")}</p>
           <div className="text-sm text-muted-foreground">
-            <p>Project: {status?.projectId ?? projectId}</p>
-            <p>Jobs: {status?.jobs ?? (loading ? "…" : 0)}</p>
-            <p>Next wake: {formatDateTime(status?.nextWakeAtMs ?? null)}</p>
+            <p>{t("cron.project", "Project")}: {status?.projectId ?? projectId}</p>
+            <p>{t("cron.jobs", "Jobs")}: {status?.jobs ?? (loading ? "…" : 0)}</p>
+            <p>{t("cron.nextWake", "Next wake")}: {formatDateTime(status?.nextWakeAtMs ?? null, t)}</p>
           </div>
         </div>
 
         <div className="border rounded-lg bg-card p-4 space-y-3 lg:col-span-2">
-          <p className="text-sm font-medium">Create Job</p>
+          <p className="text-sm font-medium">{t("cron.createJob", "Create Job")}</p>
 
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="cron-name">Name</Label>
+              <Label htmlFor="cron-name">{t("cron.name", "Name")}</Label>
               <Input
                 id="cron-name"
                 value={form.name}
                 onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="Daily summary"
+                placeholder={t("cron.name", "Name")}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cron-description">Description</Label>
+              <Label htmlFor="cron-description">{t("cron.description", "Description")}</Label>
               <Input
                 id="cron-description"
                 value={form.description}
                 onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                placeholder="Optional"
+                placeholder={t("common.optional", "Optional")}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cron-schedule-kind">Schedule</Label>
+              <Label htmlFor="cron-schedule-kind">{t("cron.schedule", "Schedule")}</Label>
               <select
                 id="cron-schedule-kind"
                 className="w-full rounded-md border bg-background px-3 py-2 text-sm"
@@ -427,25 +427,25 @@ export function CronSection({ projectId }: CronSectionProps) {
                   }))
                 }
               >
-                <option value="every">Every</option>
-                <option value="at">At</option>
+                <option value="every">{t("cron.everyLabel", "Every")}</option>
+                <option value="at">{t("cron.at", "At")}</option>
                 <option value="cron">Cron</option>
               </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cron-timeout">Timeout (seconds)</Label>
+              <Label htmlFor="cron-timeout">{t("cron.timeoutSeconds", "Timeout (seconds)")}</Label>
               <Input
                 id="cron-timeout"
                 value={form.timeoutSeconds}
                 onChange={(e) => setForm((prev) => ({ ...prev, timeoutSeconds: e.target.value }))}
-                placeholder="Optional"
+                placeholder={t("common.optional", "Optional")}
               />
             </div>
           </div>
 
           {form.scheduleKind === "at" && (
             <div className="space-y-2">
-              <Label htmlFor="cron-at">Run At</Label>
+              <Label htmlFor="cron-at">{t("cron.runAt", "Run At")}</Label>
               <Input
                 id="cron-at"
                 type="datetime-local"
@@ -458,7 +458,7 @@ export function CronSection({ projectId }: CronSectionProps) {
           {form.scheduleKind === "every" && (
             <div className="grid gap-3 md:grid-cols-[1fr_180px]">
               <div className="space-y-2">
-                <Label htmlFor="cron-every-amount">Every</Label>
+                <Label htmlFor="cron-every-amount">{t("cron.everyLabel", "Every")}</Label>
                 <Input
                   id="cron-every-amount"
                   value={form.everyAmount}
@@ -466,7 +466,7 @@ export function CronSection({ projectId }: CronSectionProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="cron-every-unit">Unit</Label>
+                <Label htmlFor="cron-every-unit">{t("cron.unit", "Unit")}</Label>
                 <select
                   id="cron-every-unit"
                   className="w-full rounded-md border bg-background px-3 py-2 text-sm"
@@ -478,9 +478,9 @@ export function CronSection({ projectId }: CronSectionProps) {
                     }))
                   }
                 >
-                  <option value="minutes">Minutes</option>
-                  <option value="hours">Hours</option>
-                  <option value="days">Days</option>
+                  <option value="minutes">{t("cron.minutes", "Minutes")}</option>
+                  <option value="hours">{t("cron.hours", "Hours")}</option>
+                  <option value="days">{t("cron.days", "Days")}</option>
                 </select>
               </div>
             </div>
@@ -489,7 +489,7 @@ export function CronSection({ projectId }: CronSectionProps) {
           {form.scheduleKind === "cron" && (
             <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="cron-expr">Cron Expression</Label>
+                <Label htmlFor="cron-expr">{t("cron.cronExpr", "Cron Expression")}</Label>
                 <Input
                   id="cron-expr"
                   value={form.cronExpr}
@@ -498,30 +498,30 @@ export function CronSection({ projectId }: CronSectionProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="cron-tz">Time Zone</Label>
+                <Label htmlFor="cron-tz">{t("cron.timeZone", "Time Zone")}</Label>
                 <Input
                   id="cron-tz"
                   value={form.cronTz}
                   onChange={(e) => setForm((prev) => ({ ...prev, cronTz: e.target.value }))}
-                  placeholder="Optional, e.g. UTC"
+                  placeholder={`${t("common.optional", "Optional")}, e.g. UTC`}
                 />
               </div>
             </div>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="cron-message">Agent Message</Label>
+            <Label htmlFor="cron-message">{t("cron.agentMessage", "Agent Message")}</Label>
             <textarea
               id="cron-message"
               value={form.message}
               onChange={(e) => setForm((prev) => ({ ...prev, message: e.target.value }))}
-              placeholder="What should the agent do on each run?"
+              placeholder={t("cron.agentMessagePlaceholder", "What should the agent do on each run?")}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm min-h-[88px] resize-y"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="cron-telegram-chat-id">Telegram Chat ID (optional)</Label>
+            <Label htmlFor="cron-telegram-chat-id">{t("cron.telegramChatId", "Telegram Chat ID (optional)")}</Label>
             <Input
               id="cron-telegram-chat-id"
               value={form.telegramChatId}
@@ -537,7 +537,7 @@ export function CronSection({ projectId }: CronSectionProps) {
                 checked={form.enabled}
                 onChange={(e) => setForm((prev) => ({ ...prev, enabled: e.target.checked }))}
               />
-              Enabled
+              {t("cron.enabled", "Enabled")}
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -547,29 +547,29 @@ export function CronSection({ projectId }: CronSectionProps) {
                   setForm((prev) => ({ ...prev, deleteAfterRun: e.target.checked }))
                 }
               />
-              Delete after one-shot run
+              {t("cron.deleteAfterOneShot", "Delete after one-shot run")}
             </label>
           </div>
 
           <Button onClick={() => void createJob()} disabled={busy} className="gap-2">
             {busy ? <Loader2 className="size-4 animate-spin" /> : <CalendarClock className="size-4" />}
-            Create Job
+            {t("cron.createJob", "Create Job")}
           </Button>
         </div>
       </div>
 
       <div className="border rounded-lg bg-card">
         <div className="px-4 py-3 border-b">
-          <p className="text-sm font-medium">Jobs</p>
+          <p className="text-sm font-medium">{t("cron.jobs", "Jobs")}</p>
         </div>
         {loading ? (
           <div className="p-8 text-muted-foreground text-sm flex items-center justify-center gap-2">
             <Loader2 className="size-4 animate-spin" />
-            Loading jobs...
+            {t("cron.loadingJobs", "Loading jobs...")}
           </div>
         ) : jobs.length === 0 ? (
           <div className="p-4 text-sm text-muted-foreground">
-            No cron jobs yet.
+            {t("cron.empty", "No cron jobs yet.")}
           </div>
         ) : (
           <div className="divide-y">
@@ -582,13 +582,13 @@ export function CronSection({ projectId }: CronSectionProps) {
                       <p className="text-sm text-muted-foreground">{job.description}</p>
                     )}
                     <div className="text-xs text-muted-foreground space-y-1">
-                      <p>Schedule: {scheduleSummary(job.schedule)}</p>
-                      <p>Next run: {formatDateTime(job.state.nextRunAtMs)}</p>
-                      <p>Last run: {formatDateTime(job.state.lastRunAtMs)}</p>
-                      <p>Last duration: {formatDuration(job.state.lastDurationMs)}</p>
-                      {job.state.lastStatus && <p>Last status: {job.state.lastStatus}</p>}
+                      <p>{t("cron.schedule", "Schedule")}: {scheduleSummary(job.schedule, t)}</p>
+                      <p>{t("cron.nextRun", "Next run")}: {formatDateTime(job.state.nextRunAtMs, t)}</p>
+                      <p>{t("cron.lastRun", "Last run")}: {formatDateTime(job.state.lastRunAtMs, t)}</p>
+                      <p>{t("cron.lastDuration", "Last duration")}: {formatDuration(job.state.lastDurationMs, t)}</p>
+                      {job.state.lastStatus && <p>{t("cron.lastStatus", "Last status")}: {job.state.lastStatus}</p>}
                       {job.state.lastError && (
-                        <p className="text-destructive">Error: {job.state.lastError}</p>
+                        <p className="text-destructive">{t("cron.errorLabel", "Error")}: {job.state.lastError}</p>
                       )}
                     </div>
                   </div>
@@ -599,7 +599,7 @@ export function CronSection({ projectId }: CronSectionProps) {
                       onClick={() => void toggleJob(job, !job.enabled)}
                       disabled={busy}
                     >
-                      {job.enabled ? "Disable" : "Enable"}
+                      {job.enabled ? t("cron.disable", "Disable") : t("cron.enable", "Enable")}
                     </Button>
                     <Button
                       variant="outline"
@@ -609,7 +609,7 @@ export function CronSection({ projectId }: CronSectionProps) {
                       className="gap-1"
                     >
                       <Play className="size-3.5" />
-                      Run now
+                      {t("cron.runNow", "Run now")}
                     </Button>
                     <Button
                       variant="outline"
@@ -619,7 +619,7 @@ export function CronSection({ projectId }: CronSectionProps) {
                       className="gap-1"
                     >
                       <History className="size-3.5" />
-                      Runs
+                      {t("cron.runs", "Runs")}
                     </Button>
                     <Button
                       variant="ghost"
@@ -627,7 +627,7 @@ export function CronSection({ projectId }: CronSectionProps) {
                       onClick={() => void removeJob(job)}
                       disabled={busy}
                       className="text-muted-foreground hover:text-destructive"
-                      title="Delete job"
+                      title={t("cron.deleteJobTitle", "Delete job")}
                     >
                       <Trash2 className="size-4" />
                     </Button>
@@ -643,9 +643,9 @@ export function CronSection({ projectId }: CronSectionProps) {
         <div className="px-4 py-3 border-b">
           <p className="text-sm font-medium flex items-center gap-2">
             <Clock3 className="size-4 text-primary" />
-            Run History{" "}
+            {t("cron.runHistory", "Run History")}{" "}
             {selectedJob
-              ? `for "${selectedJob.name}"`
+              ? `${t("cron.runHistoryFor", "for")} "${selectedJob.name}"`
               : selectedJobId
                 ? `(job ${selectedJobId})`
                 : ""}
@@ -653,17 +653,17 @@ export function CronSection({ projectId }: CronSectionProps) {
         </div>
         {selectedJobId === null ? (
           <div className="p-4 text-sm text-muted-foreground">
-            Select a job and click &quot;Runs&quot; to inspect history.
+            {t("cron.selectRunsHint", "Select a job and click \"Runs\" to inspect history.")}
           </div>
         ) : !selectedJob ? (
           runsLoading ? (
             <div className="p-8 text-muted-foreground text-sm flex items-center justify-center gap-2">
               <Loader2 className="size-4 animate-spin" />
-              Loading run history...
+              {t("cron.loadingRunHistory", "Loading run history...")}
             </div>
           ) : runs.length === 0 ? (
             <div className="p-4 text-sm text-muted-foreground">
-              Job is no longer in active list (likely one-shot auto-delete). No runs found yet.
+              {t("cron.jobNotActiveNoRuns", "Job is no longer in active list (likely one-shot auto-delete). No runs found yet.")}
             </div>
           ) : (
             <div className="divide-y">
@@ -671,11 +671,11 @@ export function CronSection({ projectId }: CronSectionProps) {
                 <div key={`${entry.ts}-${idx}`} className="p-4 text-sm space-y-1">
                   <p>
                     <span className="font-medium">{entry.status.toUpperCase()}</span>{" "}
-                    at {formatDateTime(entry.runAtMs ?? entry.ts)}
+                    {t("cron.atLabel", "at")} {formatDateTime(entry.runAtMs ?? entry.ts, t)}
                   </p>
                   <p className="text-muted-foreground">
-                    Duration: {formatDuration(entry.durationMs)} | Next run:{" "}
-                    {formatDateTime(entry.nextRunAtMs)}
+                    {t("cron.duration", "Duration")}: {formatDuration(entry.durationMs, t)} | {t("cron.nextRun", "Next run")}:{" "}
+                    {formatDateTime(entry.nextRunAtMs, t)}
                   </p>
                   {entry.summary && <p>{entry.summary}</p>}
                   {entry.error && <p className="text-destructive">{entry.error}</p>}
@@ -686,21 +686,21 @@ export function CronSection({ projectId }: CronSectionProps) {
         ) : runsLoading ? (
           <div className="p-8 text-muted-foreground text-sm flex items-center justify-center gap-2">
             <Loader2 className="size-4 animate-spin" />
-            Loading run history...
+            {t("cron.loadingRunHistory", "Loading run history...")}
           </div>
         ) : runs.length === 0 ? (
-          <div className="p-4 text-sm text-muted-foreground">No run history yet.</div>
+          <div className="p-4 text-sm text-muted-foreground">{t("cron.noRunsYet", "No run history yet.")}</div>
         ) : (
           <div className="divide-y">
             {runs.map((entry, idx) => (
               <div key={`${entry.ts}-${idx}`} className="p-4 text-sm space-y-1">
                 <p>
                   <span className="font-medium">{entry.status.toUpperCase()}</span>{" "}
-                  at {formatDateTime(entry.runAtMs ?? entry.ts)}
+                  at {formatDateTime(entry.runAtMs ?? entry.ts, t)}
                 </p>
                 <p className="text-muted-foreground">
-                  Duration: {formatDuration(entry.durationMs)} | Next run:{" "}
-                  {formatDateTime(entry.nextRunAtMs)}
+                  {t("cron.duration", "Duration")}: {formatDuration(entry.durationMs, t)} | {t("cron.nextRun", "Next run")}:{" "}
+                  {formatDateTime(entry.nextRunAtMs, t)}
                 </p>
                 {entry.summary && <p>{entry.summary}</p>}
                 {entry.error && <p className="text-destructive">{entry.error}</p>}

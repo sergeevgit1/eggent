@@ -2,17 +2,19 @@ import { Search } from "lucide-react"
 
 import { Label } from "@/components/ui/label"
 import { SidebarInput } from "@/components/ui/sidebar"
+import { useI18n } from "@/components/i18n-provider"
 
 export function SearchForm({ ...props }: React.ComponentProps<"form">) {
+  const { t } = useI18n()
   return (
     <form {...props}>
       <div className="relative">
         <Label htmlFor="search" className="sr-only">
-          Search
+          {t("search.label", "Search")}
         </Label>
         <SidebarInput
           id="search"
-          placeholder="Type to search..."
+          placeholder={t("search.placeholder", "Type to search...")}
           className="h-8 pl-7"
         />
         <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-50 select-none" />

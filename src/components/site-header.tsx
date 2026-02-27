@@ -55,7 +55,7 @@ export function SiteHeader({ title }: { title?: string }) {
             type="button"
             variant="outline"
             size="icon"
-            aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            aria-label={theme === "dark" ? t("theme.toLight", "Switch to light theme") : t("theme.toDark", "Switch to dark theme")}
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="relative h-8 w-8 overflow-hidden"
           >

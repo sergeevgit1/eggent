@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Eggent",
-  description: "AI Agent Terminal - Execute code, manage memory, search the web",
+  description: "Терминал AI-агента — запуск кода, управление памятью и веб-поиск",
 };
 
 export default function RootLayout({
