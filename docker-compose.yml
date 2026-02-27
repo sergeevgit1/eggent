@@ -15,15 +15,24 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       HOSTNAME: 0.0.0.0
       PORT: "3000"
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       TMPDIR: ${APP_TMP_DIR:-/app/data/tmp}
       PLAYWRIGHT_BROWSERS_PATH: ${PLAYWRIGHT_BROWSERS_PATH:-/app/data/ms-playwright}
       npm_config_cache: ${NPM_CONFIG_CACHE:-/app/data/npm-cache}
       XDG_CACHE_HOME: ${XDG_CACHE_HOME:-/app/data/.cache}
+      GOG_ACCOUNT: ${GOG_ACCOUNT:-}
+      GOG_KEYRING_PASSWORD: ${GOG_KEYRING_PASSWORD:-}
+      GOG_CONFIG_DIR: /home/node/.config/gogcli
+    depends_on:
+      redis:
+        condition: service_healthy
     ports:
       - "${APP_BIND_HOST:-127.0.0.1}:${APP_PORT:-3000}:3000"
     volumes:
       - ./data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/local/bin/gog:/usr/local/bin/gog:ro
+      - /home/macbot/.config/gogcli:/home/node/.config/gogcli
     group_add:
       - "${DOCKER_GID:-111}"
     healthcheck:
@@ -38,3 +47,15 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20

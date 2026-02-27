@@ -1,4 +1,4 @@
-export type QueueTaskType = "external_message" | "cron_run" | "telegram_send";
+export type QueueTaskType = "external_message" | "cron_run" | "telegram_send" | "telegram_update";
 
 export type QueueTaskStatus =
   | "queued"
@@ -27,10 +27,18 @@ export interface TelegramSendTaskPayload {
   text: string;
 }
 
+export interface TelegramUpdateTaskPayload {
+  botToken: string;
+  defaultProjectId?: string;
+  allowedUserIds: string[];
+  update: unknown;
+}
+
 export type QueueTaskPayload =
   | ExternalMessageTaskPayload
   | CronRunTaskPayload
-  | TelegramSendTaskPayload;
+  | TelegramSendTaskPayload
+  | TelegramUpdateTaskPayload;
 
 export interface QueueTaskRecord {
   id: string;

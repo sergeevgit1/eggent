@@ -2,6 +2,7 @@ import { Queue, QueueEvents, Worker } from "bullmq";
 import { nanoid } from "nanoid";
 import { createHash } from "node:crypto";
 import { handleExternalMessage } from "@/lib/external/handle-external-message";
+import { toTelegramHtml, toTelegramPlainText } from "@/lib/integrations/telegram-format";
 import {
   createTaskRecord,
   findTaskByIdempotencyKey,
@@ -14,6 +15,7 @@ import type {
   ExternalMessageTaskPayload,
   QueueTaskRecord,
   TelegramSendTaskPayload,
+  TelegramUpdateTaskPayload,
 } from "@/lib/queue/types";
 
 const QUEUE_NAME = "eggent-tasks";
@@ -33,10 +35,16 @@ type EnqueueTelegramSendInput = TelegramSendTaskPayload & {
   maxAttempts?: number;
 };
 
+type EnqueueTelegramUpdateInput = TelegramUpdateTaskPayload & {
+  idempotencyKey?: string;
+  maxAttempts?: number;
+};
+
 type QueueBootstrap = {
   queue: Queue;
   events: QueueEvents;
   worker: Worker;
+  watchdog: NodeJS.Timeout;
 };
 
 let boot: QueueBootstrap | null = null;
@@ -72,6 +80,16 @@ function buildDefaultTelegramSendIdempotencyKey(payload: TelegramSendTaskPayload
   return `tgsend:${hash.digest("hex")}`;
 }
 
+function buildDefaultTelegramUpdateIdempotencyKey(payload: TelegramUpdateTaskPayload): string {
+  const maybeUpdateId = (payload.update as { update_id?: unknown } | null)?.update_id;
+  if (typeof maybeUpdateId === "number" && Number.isInteger(maybeUpdateId)) {
+    return `tgupd:${maybeUpdateId}`;
+  }
+  const hash = createHash("sha256");
+  hash.update(JSON.stringify(payload.update ?? {}));
+  return `tgupd:${hash.digest("hex")}`;
+}
+
 export function ensureQueueWorkerStarted(): QueueBootstrap {
   if (boot) return boot;
 
@@ -80,6 +98,7 @@ export function ensureQueueWorkerStarted(): QueueBootstrap {
     connection,
     defaultJobOptions: {
       attempts: 5,
+      timeout: Number(process.env.QUEUE_JOB_TIMEOUT_MS || 180000),
       backoff: {
         type: "exponential",
         delay: 2000,
@@ -130,12 +149,22 @@ export function ensureQueueWorkerStarted(): QueueBootstrap {
 
       if (task.type === "telegram_send") {
         const payload = task.payload as TelegramSendTaskPayload;
-        const response = await fetch(`https://api.telegram.org/bot${payload.botToken}/sendMessage`, {
+        const plain = toTelegramPlainText(payload.text);
+        const html = toTelegramHtml(payload.text);
+        let response = await fetch(`https://api.telegram.org/bot${payload.botToken}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: payload.chatId, text: payload.text }),
+          body: JSON.stringify({ chat_id: payload.chatId, text: html, parse_mode: "HTML" }),
         });
-        const data = await response.json().catch(() => null);
+        let data = await response.json().catch(() => null);
+        if (!response.ok || !(data && data.ok)) {
+          response = await fetch(`https://api.telegram.org/bot${payload.botToken}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: payload.chatId, text: plain }),
+          });
+          data = await response.json().catch(() => null);
+        }
         if (!response.ok || !(data && data.ok)) {
           throw new Error(`Telegram sendMessage failed (${response.status})${data?.description ? `: ${data.description}` : ""}`);
         }
@@ -143,6 +172,23 @@ export function ensureQueueWorkerStarted(): QueueBootstrap {
           status: "done",
           result: data,
         });
+        return;
+      }
+
+      if (task.type === "telegram_update") {
+        const payload = task.payload as TelegramUpdateTaskPayload;
+        const mod = await import("@/lib/integrations/telegram-processor");
+        const result = await mod.processTelegramUpdate({
+          botToken: payload.botToken,
+          defaultProjectId: payload.defaultProjectId,
+          allowedUserIds: payload.allowedUserIds,
+          update: payload.update as any,
+        });
+        await updateTaskRecord(taskId, {
+          status: "done",
+          result,
+        });
+        return;
       }
     },
     { connection, concurrency: Number(process.env.QUEUE_CONCURRENCY || 3) }
@@ -157,9 +203,30 @@ export function ensureQueueWorkerStarted(): QueueBootstrap {
       attempt: Math.max(1, job?.attemptsMade || 1),
       error: error?.message || "Task failed",
     });
+
+    if (!isDead) {
+      // Auto self-heal for stalled/retry tasks by forcing requeue once failed callback fires
+      await updateTaskRecord(taskId, { status: "queued" });
+      await queue.add(String(job?.name || "task"), { taskId }, { attempts: job?.opts?.attempts || 5, jobId: taskId });
+    }
   });
 
-  boot = { queue, events, worker };
+  const watchdog = setInterval(() => {
+    void (async () => {
+      const tasks = await listTaskRecords(1000);
+      const cutoff = Date.now() - Number(process.env.QUEUE_STALLED_REQUEUE_MS || 90000);
+      for (const task of tasks) {
+        const updatedAtMs = Date.parse(task.updatedAt);
+        const stale = Number.isFinite(updatedAtMs) && updatedAtMs < cutoff;
+        if ((task.status === "running" || task.status === "retry_wait") && stale) {
+          await updateTaskRecord(task.id, { status: "queued", error: task.error || "auto-requeued by watchdog" });
+          await queue.add(task.type, { taskId: task.id }, { attempts: task.maxAttempts, jobId: task.id });
+        }
+      }
+    })();
+  }, Number(process.env.QUEUE_WATCHDOG_INTERVAL_MS || 30000));
+
+  boot = { queue, events, worker, watchdog };
 
   void (async () => {
     const tasks = await listTaskRecords(1000);
@@ -254,6 +321,36 @@ export async function enqueueTelegramSendTask(input: EnqueueTelegramSendInput): 
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
+  await createTaskRecord(task);
+  const { queue } = ensureQueueWorkerStarted();
+  await queue.add(task.type, { taskId: task.id }, { attempts: task.maxAttempts, jobId: task.id });
+  return task;
+}
+
+export async function enqueueTelegramUpdateTask(input: EnqueueTelegramUpdateInput): Promise<QueueTaskRecord> {
+  const idempotencyKey = input.idempotencyKey?.trim() || buildDefaultTelegramUpdateIdempotencyKey(input);
+  const existing = await findTaskByIdempotencyKey(idempotencyKey);
+  if (existing && (existing.status === "queued" || existing.status === "running" || existing.status === "retry_wait" || existing.status === "done")) {
+    return existing;
+  }
+
+  const task: QueueTaskRecord = {
+    id: nanoid(),
+    type: "telegram_update",
+    payload: {
+      botToken: input.botToken,
+      defaultProjectId: input.defaultProjectId,
+      allowedUserIds: input.allowedUserIds,
+      update: input.update,
+    },
+    status: "queued",
+    idempotencyKey,
+    attempt: 0,
+    maxAttempts: Math.max(1, Math.floor(input.maxAttempts ?? 5)),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
   await createTaskRecord(task);
   const { queue } = ensureQueueWorkerStarted();
   await queue.add(task.type, { taskId: task.id }, { attempts: task.maxAttempts, jobId: task.id });
