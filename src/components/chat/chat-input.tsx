@@ -3,6 +3,7 @@
 import { useRef, useCallback, useState, useEffect } from "react";
 import { Send, Square, Paperclip, X, FileIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/components/i18n-provider";
 import type { ChatFile } from "@/lib/types";
 
 interface ChatInputProps {
@@ -26,6 +27,7 @@ export function ChatInput({
   chatId,
   onFilesUploaded,
 }: ChatInputProps) {
+  const { t } = useI18n();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -43,7 +45,7 @@ export function ChatInput({
 
     fetch(`/api/chat/files?chatId=${encodeURIComponent(chatId)}`)
       .then((res) => {
-        if (!res.ok) throw new Error("Failed to load files");
+        if (!res.ok) throw new Error(t("chat.errors.loadFiles", "Failed to load files"));
         return res.json();
       })
       .then((data: { files?: ChatFile[] }) => {
@@ -101,7 +103,7 @@ export function ChatInput({
         });
 
         if (!response.ok) {
-          throw new Error("Upload failed");
+          throw new Error(t("chat.errors.upload", "Upload failed"));
         }
 
         const data = await response.json();
@@ -174,7 +176,7 @@ export function ChatInput({
         );
         setUploadedFiles((prev) => prev.filter((f) => f.name !== filename));
       } catch (error) {
-        console.error("Failed to delete file:", error);
+        console.error(t("chat.errors.deleteFile", "Failed to delete file"), error);
       }
     },
     [chatId]
@@ -222,7 +224,7 @@ export function ChatInput({
         {/* Drag drop overlay hint */}
         {isDragging && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl border-2 border-dashed border-primary bg-primary/10">
-            <p className="text-primary font-medium">Drop files here</p>
+            <p className="text-primary font-medium">{t("chat.dropFilesHere", "Drop files here")}</p>
           </div>
         )}
 
@@ -243,7 +245,7 @@ export function ChatInput({
               onClick={() => fileInputRef.current?.click()}
               disabled={disabled || !chatId}
               className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground hover:text-foreground"
-              title={chatId ? "Attach files" : "Send a message first to attach files"}
+              title={chatId ? t("chat.attachFiles", "Attach files") : t("chat.attachDisabled", "Send a message first to attach files")}
             >
               <Paperclip className="size-4" />
             </Button>
@@ -254,7 +256,7 @@ export function ChatInput({
               value={input}
               onChange={handleInput}
               onKeyDown={handleKeyDown}
-              placeholder={isDragging ? "Drop files here..." : "Send a message..."}
+              placeholder={isDragging ? t("chat.dropFilesHereDots", "Drop files here...") : t("chat.placeholder", "Send a message...")}
               disabled={disabled}
               rows={1}
               className="min-h-[30px] max-h-[200px] w-full translate-y-px resize-none border-0 bg-transparent px-1 pt-2.5 pb-1.5 text-sm leading-5 placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
@@ -283,7 +285,7 @@ export function ChatInput({
           </div>
         </div>
         <p className="mt-2 text-center text-xs text-muted-foreground">
-          AI agent with code execution, memory, and web search capabilities
+          {t("chat.capabilities", "AI agent with code execution, memory, and web search capabilities")}
         </p>
       </div>
     </div>

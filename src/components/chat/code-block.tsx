@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/components/i18n-provider";
 import { copyTextToClipboard } from "@/lib/utils";
 
 interface CodeBlockProps {
@@ -11,6 +12,7 @@ interface CodeBlockProps {
 }
 
 export function CodeBlock({ code, language }: CodeBlockProps) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -24,7 +26,7 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
     <div className="relative group rounded-lg border bg-muted/50 overflow-hidden my-2">
       <div className="flex items-center justify-between px-3 py-1.5 border-b bg-muted/80">
         <span className="text-xs text-muted-foreground font-mono">
-          {language || "code"}
+          {language || t("chat.code", "code")}
         </span>
         <Button
           variant="ghost"
@@ -35,12 +37,12 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
           {copied ? (
             <>
               <Check className="size-3" />
-              Copied
+              {t("chat.copied", "Copied")}
             </>
           ) : (
             <>
               <Copy className="size-3" />
-              Copy
+              {t("chat.copy", "Copy")}
             </>
           )}
         </Button>

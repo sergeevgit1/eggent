@@ -14,6 +14,7 @@ import {
   FolderOpen,
 } from "lucide-react";
 import { CodeBlock } from "./code-block";
+import { useI18n } from "@/components/i18n-provider";
 
 interface ToolOutputProps {
   toolName: string;
@@ -69,9 +70,10 @@ const TOOL_LABELS: Record<string, string> = {
 };
 
 export function ToolOutput({ toolName, args, result }: ToolOutputProps) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const Icon = TOOL_ICONS[toolName] || Terminal;
-  const label = TOOL_LABELS[toolName] || toolName;
+  const label = t(`chat.tools.${toolName}`, TOOL_LABELS[toolName] || toolName);
 
   // Don't render the response tool visually
   if (toolName === "response") return null;
@@ -121,7 +123,7 @@ export function ToolOutput({ toolName, args, result }: ToolOutputProps) {
           {result ? (
             <div className="text-sm">
               <p className="text-xs text-muted-foreground mb-1 font-medium">
-                Output:
+                {t("chat.tool.output", "Output:")}
               </p>
               <pre className="text-xs bg-muted/50 rounded p-2 overflow-x-auto whitespace-pre-wrap max-h-64 overflow-y-auto">
                 {result}

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { MessageBubble } from "./message-bubble";
 import { Loader2 } from "lucide-react";
 import type { UIMessage } from "ai";
+import { useI18n } from "@/components/i18n-provider";
 
 interface ChatMessagesProps {
   messages: UIMessage[];
@@ -11,6 +12,7 @@ interface ChatMessagesProps {
 }
 
 export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
+  const { t } = useI18n();
   const endRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll on new messages
@@ -39,10 +41,9 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
               </svg>
             </div>
           </div>
-          <h3 className="text-lg font-semibold">Start a conversation</h3>
+          <h3 className="text-lg font-semibold">{t("chat.emptyTitle", "Start a conversation")}</h3>
           <p className="text-sm text-muted-foreground">
-            Send a message to begin chatting with the AI agent. It can execute
-            code, search the web, manage memory, and more.
+            {t("chat.emptyDescription", "Send a message to begin chatting with the AI agent. It can execute code, search the web, manage memory, and more.")}
           </p>
         </div>
       </div>
@@ -63,7 +64,7 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
             </div>
             <div className="flex items-center">
               <span className="text-sm text-muted-foreground">
-                Thinking...
+                {t("chat.thinking", "Thinking...")}
               </span>
             </div>
           </div>

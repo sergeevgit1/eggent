@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import { Bot, User } from "lucide-react";
 import { CodeBlock } from "./code-block";
 import { ToolOutput } from "./tool-output";
+import { useI18n } from "@/components/i18n-provider";
 import type { UIMessage } from "ai";
 
 interface MessageBubbleProps {
@@ -12,6 +13,7 @@ interface MessageBubbleProps {
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
+  const { t } = useI18n();
   const isUser = message.role === "user";
 
   // Extract text content from parts
@@ -53,8 +55,8 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                     ? dp.output
                     : JSON.stringify(dp.output)
                   : dp.state === "output-error"
-                    ? "Error occurred"
-                    : "Running..."
+                    ? t("chat.tool.errorOccurred", "Error occurred")
+                    : t("chat.tool.running", "Running...")
               }
             />
           );
@@ -84,8 +86,8 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                     ? tp.output
                     : JSON.stringify(tp.output)
                   : tp.state === "output-error"
-                    ? "Error occurred"
-                    : "Running..."
+                    ? t("chat.tool.errorOccurred", "Error occurred")
+                    : t("chat.tool.running", "Running...")
               }
             />
           );
