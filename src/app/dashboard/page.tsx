@@ -21,16 +21,14 @@ export default async function DashboardPage() {
 
   return (
     <div className="h-svh overflow-hidden [--header-height:calc(--spacing(14))]">
-      <SidebarProvider className="flex h-full min-h-0 flex-col">
-        <SiteHeader title="Chat" />
-        <div className="flex min-h-0 flex-1 overflow-hidden">
-          <AppSidebar />
-          <SidebarInset className="min-h-0 overflow-hidden">
-            <div className="flex h-[calc(100svh-var(--header-height))] min-h-0 flex-1 flex-col overflow-hidden">
-              <ChatPanel />
-            </div>
-          </SidebarInset>
-        </div>
+      <SidebarProvider className="flex h-full min-h-0">
+        <AppSidebar />
+        <SidebarInset className="min-h-0 overflow-hidden">
+          <SiteHeader title="Chat" />
+          <div className="flex h-[calc(100svh-var(--header-height))] min-h-0 flex-1 flex-col overflow-hidden">
+            <ChatPanel />
+          </div>
+        </SidebarInset>
       </SidebarProvider>
     </div>
   )

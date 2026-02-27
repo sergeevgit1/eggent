@@ -98,12 +98,12 @@ export default function MemoryPage() {
   }
 
   return (
-    <div className="[--header-height:calc(--spacing(14))]">
-      <SidebarProvider className="flex flex-col">
-        <SiteHeader title="Memory Dashboard" />
-        <div className="flex flex-1">
-          <AppSidebar />
-          <SidebarInset>
+    <div className="h-svh overflow-hidden [--header-height:calc(--spacing(14))]">
+      <SidebarProvider className="flex h-full min-h-0">
+        <AppSidebar />
+        <SidebarInset className="min-h-0 overflow-hidden">
+          <SiteHeader title="Memory Dashboard" />
+          <div className="flex min-h-0 flex-1 overflow-auto">
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 max-w-4xl mx-auto w-full">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -214,8 +214,8 @@ export default function MemoryPage() {
                 <KnowledgeSection projectId={subdir} />
               )}
             </div>
-          </SidebarInset>
-        </div>
+          </div>
+        </SidebarInset>
       </SidebarProvider>
     </div>
   );

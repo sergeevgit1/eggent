@@ -9,12 +9,12 @@ import { useI18n } from "@/components/i18n-provider";
 export default function MessengersPage() {
   const { t } = useI18n();
   return (
-    <div className="[--header-height:calc(--spacing(14))]">
-      <SidebarProvider className="flex flex-col">
-        <SiteHeader title="Messengers" />
-        <div className="flex flex-1">
-          <AppSidebar />
-          <SidebarInset>
+    <div className="h-svh overflow-hidden [--header-height:calc(--spacing(14))]">
+      <SidebarProvider className="flex h-full min-h-0">
+        <AppSidebar />
+        <SidebarInset className="min-h-0 overflow-hidden">
+          <SiteHeader title="Messengers" />
+          <div className="flex min-h-0 flex-1 overflow-auto">
             <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 max-w-5xl mx-auto w-full">
               <div className="space-y-2">
                 <h2 className="text-2xl font-semibold">{t("messengers.title", "Messenger Integrations")}</h2>
@@ -49,8 +49,8 @@ export default function MessengersPage() {
 
               <TelegramIntegrationManager />
             </div>
-          </SidebarInset>
-        </div>
+          </div>
+        </SidebarInset>
       </SidebarProvider>
     </div>
   );
