@@ -7,6 +7,7 @@ import { ChatMessages } from "./chat-messages";
 import { ChatInput } from "./chat-input";
 import { useAppStore } from "@/store/app-store";
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ChatMessage } from "@/lib/types";
 import { useBackgroundSync } from "@/hooks/use-background-sync";
 import { generateClientId } from "@/lib/utils";
@@ -223,6 +224,10 @@ export function ChatPanel() {
   const [lastError, setLastError] = useState<string | null>(null);
   const [backgroundRecovering, setBackgroundRecovering] = useState(false);
 
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   // Internal chatId that stays stable during a message send.
   // Pre-generate a UUID so useChat always has a consistent id.
   const [internalChatId, setInternalChatId] = useState(
@@ -245,18 +250,37 @@ export function ChatPanel() {
   // Track the last activeChatId we've seen to detect external navigation
   const prevActiveChatId = useRef(activeChatId);
 
+  const updateDashboardUrl = useCallback(
+    (chatId: string | null) => {
+      if (pathname !== "/dashboard") return;
+      if (chatId) {
+        const params = new URLSearchParams(searchParams?.toString());
+        params.set("chatId", chatId);
+        router.replace(`/dashboard?${params.toString()}`);
+      } else {
+        const params = new URLSearchParams(searchParams?.toString());
+        params.delete("chatId");
+        const suffix = params.toString();
+        router.replace(`/dashboard${suffix ? `?${suffix}` : ""}`);
+      }
+    },
+    [pathname, router, searchParams]
+  );
+
   // Sync internalChatId when user navigates to a different chat via sidebar
   useEffect(() => {
     if (activeChatId !== prevActiveChatId.current) {
       prevActiveChatId.current = activeChatId;
       if (activeChatId !== null) {
         setInternalChatId(activeChatId);
+        updateDashboardUrl(activeChatId);
       } else {
         // "New chat" clicked — generate fresh id
         setInternalChatId(generateClientId());
+        updateDashboardUrl(null);
       }
     }
-  }, [activeChatId]);
+  }, [activeChatId, updateDashboardUrl]);
 
   // Stable transport — body is a function so it always reads current refs
   const transport = useMemo(
@@ -311,6 +335,17 @@ export function ChatPanel() {
     }
     setLastError(null);
   }, [activeChatId, setMessages]);
+
+  // On initial mount: if URL has ?chatId=..., sync store so refresh restores chat.
+  useEffect(() => {
+    if (pathname !== "/dashboard") return;
+    const urlChatId = searchParams?.get("chatId")?.trim();
+    if (!urlChatId) return;
+    if (activeChatId !== urlChatId) {
+      prevActiveChatId.current = urlChatId;
+      setActiveChatId(urlChatId);
+    }
+  }, [pathname, searchParams, activeChatId, setActiveChatId]);
 
   // Keep active chat history synced with background updates.
   useEffect(() => {
@@ -483,6 +518,7 @@ export function ChatPanel() {
         updatedAt: new Date().toISOString(),
         messageCount: 1,
       });
+      updateDashboardUrl(internalChatId);
     }
 
     sendMessage({ text: input });

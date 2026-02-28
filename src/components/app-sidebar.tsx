@@ -71,9 +71,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const isOnChatPage = pathname === "/dashboard";
 
-  const goToChatIfNeeded = React.useCallback(() => {
-    if (!isOnChatPage) router.push("/dashboard");
-  }, [isOnChatPage, router]);
+  const goToChatIfNeeded = React.useCallback(
+    (chatId?: string | null) => {
+      if (chatId) {
+        const params = new URLSearchParams({ chatId });
+        router.push(`/dashboard?${params}`);
+        return;
+      }
+      if (!isOnChatPage) router.push("/dashboard");
+    },
+    [isOnChatPage, router]
+  );
 
   useEffect(() => {
     fetch("/api/projects")
@@ -116,13 +124,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const handleNewChat = () => {
     setActiveChatId(null);
-    goToChatIfNeeded();
+    goToChatIfNeeded(null);
+    clearChatQueryIfNeeded(null);
   };
+
+  const clearChatQueryIfNeeded = React.useCallback(
+    (nextChatId: string | null) => {
+      if (!isOnChatPage) return;
+      if (nextChatId) return;
+      const params = new URLSearchParams(window.location.search);
+      if (!params.has("chatId")) return;
+      params.delete("chatId");
+      router.replace(`/dashboard${params.toString() ? `?${params}` : ""}`);
+    },
+    [isOnChatPage, router]
+  );
 
   const handleChatClick = (chatId: string) => {
     if (editingChatId) return;
     setActiveChatId(chatId);
-    goToChatIfNeeded();
+    goToChatIfNeeded(chatId);
+    clearChatQueryIfNeeded(chatId);
   };
 
   const applyLocalChatUpdate = React.useCallback(
@@ -158,15 +180,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       .then((r) => r.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : [];
+        const nextChatId = list[0]?.id ?? null;
         setChats(list);
         setActiveProjectId(projectId);
-        setActiveChatId(list[0]?.id ?? null);
-        goToChatIfNeeded();
+        setActiveChatId(nextChatId);
+        goToChatIfNeeded(nextChatId);
+        clearChatQueryIfNeeded(nextChatId);
       })
       .catch(() => {
         setActiveProjectId(projectId);
         setActiveChatId(null);
-        goToChatIfNeeded();
+        goToChatIfNeeded(null);
+        clearChatQueryIfNeeded(null);
       });
   };
 

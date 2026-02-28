@@ -43,6 +43,21 @@ export function SiteHeader({ title }: { title?: string }) {
     setActiveChatId(null)
     if (pathname !== "/dashboard") {
       router.push("/dashboard")
+    } else {
+      const params = new URLSearchParams(window.location.search)
+      if (params.has("chatId")) {
+        params.delete("chatId")
+        router.replace(`/dashboard${params.toString() ? `?${params}` : ""}`)
+      }
+    }
+  }
+
+  const handleOpenActiveChat = () => {
+    if (activeChatId) {
+      const params = new URLSearchParams({ chatId: activeChatId })
+      router.push(`/dashboard?${params}`)
+    } else {
+      router.push("/dashboard")
     }
   }
 

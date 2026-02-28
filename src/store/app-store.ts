@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import type { ChatListItem, Project } from "@/lib/types";
 
 interface AppState {
@@ -25,30 +26,45 @@ interface AppState {
   setSidebarTab: (tab: "chats" | "projects") => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
-  // Chats
-  chats: [],
-  activeChatId: null,
-  setChats: (chats) => set({ chats }),
-  setActiveChatId: (id) => set({ activeChatId: id }),
-  addChat: (chat) =>
-    set((state) => ({ chats: [chat, ...state.chats] })),
-  removeChat: (id) =>
-    set((state) => ({
-      chats: state.chats.filter((c) => c.id !== id),
-      activeChatId: state.activeChatId === id ? null : state.activeChatId,
-    })),
+export const useAppStore = create<AppState>()(
+  persist(
+    (set) => ({
+      // Chats
+      chats: [],
+      activeChatId: null,
+      setChats: (chats) => set({ chats }),
+      setActiveChatId: (id) => set({ activeChatId: id }),
+      addChat: (chat) =>
+        set((state) => ({ chats: [chat, ...state.chats] })),
+      removeChat: (id) =>
+        set((state) => ({
+          chats: state.chats.filter((c) => c.id !== id),
+          activeChatId: state.activeChatId === id ? null : state.activeChatId,
+        })),
 
-  // Projects
-  projects: [],
-  activeProjectId: null,
-  currentPath: "",
-  setProjects: (projects) => set({ projects }),
-  setActiveProjectId: (id) =>
-    set({ activeProjectId: id, activeChatId: null, currentPath: "" }),
-  setCurrentPath: (path) => set({ currentPath: path }),
+      // Projects
+      projects: [],
+      activeProjectId: null,
+      currentPath: "",
+      setProjects: (projects) => set({ projects }),
+      setActiveProjectId: (id) =>
+        set({ activeProjectId: id, currentPath: "" }),
+      setCurrentPath: (path) => set({ currentPath: path }),
 
-  // UI
-  sidebarTab: "chats",
-  setSidebarTab: (tab) => set({ sidebarTab: tab }),
-}));
+      // UI
+      sidebarTab: "chats",
+      setSidebarTab: (tab) => set({ sidebarTab: tab }),
+    }),
+    {
+      name: "eggent.app",
+      storage: createJSONStorage(() => localStorage),
+      version: 1,
+      partialize: (state) => ({
+        activeChatId: state.activeChatId,
+        activeProjectId: state.activeProjectId,
+        currentPath: state.currentPath,
+        sidebarTab: state.sidebarTab,
+      }),
+    }
+  )
+);
