@@ -259,7 +259,7 @@ export function ChatInput({
               placeholder={isDragging ? t("chat.dropFilesHereDots", "Drop files here...") : t("chat.placeholder", "Send a message...")}
               disabled={disabled}
               rows={1}
-              className="min-h-[30px] max-h-[200px] w-full translate-y-px resize-none border-0 bg-transparent px-1 pt-2.5 pb-1.5 text-sm leading-5 placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
+              className="min-h-[30px] max-h-[200px] w-full translate-y-px resize-none border-0 bg-transparent px-1 pt-2.5 pb-1.5 text-base md:text-sm leading-6 md:leading-5 placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
             />
           </div>
 
