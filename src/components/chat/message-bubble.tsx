@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
+  Brain,
   Check,
   ChevronDown,
   ChevronUp,
@@ -63,6 +64,13 @@ function looksLikeUnicodeDiagram(text: string): boolean {
   return diagramLines.length >= 2;
 }
 
+function compactReasoning(input: string): string {
+  const normalized = (input || "").replace(/\s+/g, " ").trim();
+  if (!normalized) return "";
+  if (normalized.length <= 260) return normalized;
+  return `${normalized.slice(0, 257)}…`;
+}
+
 function slugifyHeading(text: string): string {
   return text
     .toLowerCase()
@@ -85,6 +93,14 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     .filter((p): p is { type: "text"; text: string } => p.type === "text" && typeof p.text === "string")
     .map((p) => p.text)
     .join("");
+
+  const reasoningRaw = parts
+    .filter((p): p is { type: "reasoning"; text: string } => p.type === "reasoning" && typeof p.text === "string")
+    .map((p) => p.text)
+    .join("\n")
+    .trim();
+
+  const reasoningPreview = useMemo(() => compactReasoning(reasoningRaw), [reasoningRaw]);
 
   const textContent = useMemo(
     () => (isUser ? rawTextContent : sanitizeAssistantText(rawTextContent)),
@@ -227,9 +243,18 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         </div>
       )}
 
-      {textContent && (
+      {(textContent || reasoningPreview) && (
         <div className={`group flex min-w-0 items-start py-2 ${isUser ? "justify-end" : "justify-start"}`}>
           <div className={`min-w-0 ${isUser ? "max-w-[85%]" : "w-full max-w-full"}`}>
+            {!isUser && reasoningPreview ? (
+              <div className="mb-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+                <div className="mb-1 inline-flex items-center gap-1 font-medium text-primary/80">
+                  <Brain className="size-3.5 animate-pulse" />
+                  Ход мысли
+                </div>
+                <p className="leading-5">{reasoningPreview}</p>
+              </div>
+            ) : null}
             {isUser ? (
               <div className="bg-primary text-primary-foreground rounded-2xl px-3 py-2 text-sm leading-7">
                 <p className="whitespace-pre-wrap break-words">{textContent}</p>

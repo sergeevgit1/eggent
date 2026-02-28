@@ -61,16 +61,12 @@ export async function POST(req: NextRequest) {
         "X-Chat-Id": resolvedChatId,
       },
       consumeSseStream: async ({ stream }) => {
-        const reader = stream.getReader();
         try {
-          while (true) {
-            const { done } = await reader.read();
-            if (done) break;
+          for await (const _chunk of stream) {
+            // keep draining server-side mirror stream to allow autonomous completion
           }
         } catch {
           // non-critical
-        } finally {
-          reader.releaseLock();
         }
       },
     });

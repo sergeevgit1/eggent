@@ -64,9 +64,13 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
 
         {isLoading && messages.length > 0 && (
           <div className="py-3">
-            <span className="text-sm text-muted-foreground">
+            <div className="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+              <span className="relative flex size-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+                <span className="relative inline-flex size-2 rounded-full bg-primary" />
+              </span>
               {t("chat.thinking", "Thinking...")}
-            </span>
+            </div>
           </div>
         )}
 
