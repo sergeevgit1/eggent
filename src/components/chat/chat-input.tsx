@@ -184,7 +184,7 @@ export function ChatInput({
 
   return (
     <div
-      className={`shrink-0 border-t bg-background p-4 transition-colors ${isDragging ? "bg-primary/5 border-primary" : ""}`}
+      className={`shrink-0 border-t bg-background px-4 pt-3 pb-2 md:p-4 transition-colors ${isDragging ? "bg-primary/5 border-primary" : ""}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -284,9 +284,7 @@ export function ChatInput({
             )}
           </div>
         </div>
-        <p className="mt-2 text-center text-xs text-muted-foreground">
-          {t("chat.capabilities", "AI agent with code execution, memory, and web search capabilities")}
-        </p>
+
       </div>
     </div>
   );
