@@ -144,7 +144,8 @@ function resolveContextCwd(context: AgentContext): string {
   const baseDir = getWorkDir(context.projectId);
   const rawCurrentPath = context.currentPath?.trim();
   if (!rawCurrentPath) {
-    return baseDir;
+    const taskFolder = context.chatId?.trim() ? path.join("tasks", context.chatId.trim()) : "tasks/ad-hoc";
+    return path.resolve(baseDir, taskFolder);
   }
 
   // currentPath is expected to be project-relative; normalize absolute-like inputs ("/foo")
@@ -159,7 +160,8 @@ function resolveContextCwd(context: AgentContext): string {
     return resolved;
   }
 
-  return baseDir;
+  const taskFolder = context.chatId?.trim() ? path.join("tasks", context.chatId.trim()) : "tasks/ad-hoc";
+  return path.resolve(baseDir, taskFolder);
 }
 
 function normalizeContextPathForOutput(rawPath: string | null | undefined): string {

@@ -10,11 +10,14 @@ import {
   FileCode,
   File,
   Download,
+  Play,
+  Save,
 } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 import { useBackgroundSync } from "@/hooks/use-background-sync";
 import { useI18n } from "@/components/i18n-provider";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 interface FileEntry {
   name: string;
@@ -47,11 +50,12 @@ function getFileIcon(name: string) {
 interface TreeNodeProps {
   projectId: string;
   name: string;
-  relativePath: string; // full relative path from project root
+  relativePath: string;
   type: "file" | "directory";
   depth: number;
   refreshToken: number;
   t: (key: string, fallback?: string) => string;
+  onFileOpen: (filePath: string, fileName: string) => void;
 }
 
 function TreeNode({
@@ -62,6 +66,7 @@ function TreeNode({
   depth,
   refreshToken,
   t,
+  onFileOpen,
 }: TreeNodeProps) {
   const { currentPath, setCurrentPath } = useAppStore();
   const [expanded, setExpanded] = useState(false);
@@ -78,7 +83,6 @@ function TreeNode({
 
   const isActive = type === "directory" && currentPath === relativePath;
 
-  // Auto-expand if this folder is a parent of currentPath
   useEffect(() => {
     if (
       type === "directory" &&
@@ -90,10 +94,8 @@ function TreeNode({
   }, [currentPath, relativePath, type, expanded]);
 
   const loadChildren = useCallback(async (force = false, showLoader = true) => {
-    if (!force && children !== null) return; // already loaded
-    if (showLoader) {
-      setLoading(true);
-    }
+    if (!force && children !== null) return;
+    if (showLoader) setLoading(true);
     try {
       const params = new URLSearchParams({
         project: projectId,
@@ -101,15 +103,11 @@ function TreeNode({
       });
       const res = await fetch(`/api/files?${params}`);
       const data = await res.json();
-      if (Array.isArray(data)) {
-        setChildren(data);
-      }
+      if (Array.isArray(data)) setChildren(data);
     } catch {
       setChildren((prev) => (prev === null ? [] : prev));
     }
-    if (showLoader) {
-      setLoading(false);
-    }
+    if (showLoader) setLoading(false);
   }, [projectId, relativePath, children]);
 
   useEffect(() => {
@@ -126,16 +124,14 @@ function TreeNode({
     if (type === "directory") {
       const willExpand = !expanded;
       setExpanded(willExpand);
-      if (willExpand) {
-        void loadChildren(true, true);
-      }
+      if (willExpand) void loadChildren(true, true);
       setCurrentPath(relativePath);
+      return;
     }
+    onFileOpen(relativePath, name);
   };
 
-  const Icon = type === "directory"
-    ? (expanded ? FolderOpen : Folder)
-    : getFileIcon(name);
+  const Icon = type === "directory" ? (expanded ? FolderOpen : Folder) : getFileIcon(name);
 
   return (
     <div className="group/tree-node relative">
@@ -160,13 +156,12 @@ function TreeNode({
         <Icon
           className={cn(
             "size-3.5 shrink-0",
-            type === "directory"
-              ? "text-blue-500"
-              : "text-muted-foreground"
+            type === "directory" ? "text-blue-500" : "text-muted-foreground"
           )}
         />
         <span className="truncate">{name}</span>
       </button>
+
       {type === "file" && (
         <a
           href={downloadHref}
@@ -182,10 +177,7 @@ function TreeNode({
       {type === "directory" && expanded && (
         <div>
           {loading && (
-            <span
-              className="text-[10px] text-muted-foreground block"
-              style={{ paddingLeft: `${(depth + 1) * 12 + 4}px` }}
-            >
+            <span className="text-[10px] text-muted-foreground block" style={{ paddingLeft: `${(depth + 1) * 12 + 4}px` }}>
               {t("common.loading", "Loading...")}
             </span>
           )}
@@ -194,20 +186,16 @@ function TreeNode({
               key={child.name}
               projectId={projectId}
               name={child.name}
-              relativePath={
-                relativePath ? `${relativePath}/${child.name}` : child.name
-              }
+              relativePath={relativePath ? `${relativePath}/${child.name}` : child.name}
               type={child.type}
               depth={depth + 1}
               refreshToken={refreshToken}
               t={t}
+              onFileOpen={onFileOpen}
             />
           ))}
           {children?.length === 0 && !loading && (
-            <span
-              className="text-[10px] text-muted-foreground block py-0.5"
-              style={{ paddingLeft: `${(depth + 1) * 12 + 4}px` }}
-            >
+            <span className="text-[10px] text-muted-foreground block py-0.5" style={{ paddingLeft: `${(depth + 1) * 12 + 4}px` }}>
               {t("files.empty", "Empty")}
             </span>
           )}
@@ -225,10 +213,85 @@ export function FileTree({ projectId }: FileTreeProps) {
   const { t } = useI18n();
   const { currentPath, setCurrentPath } = useAppStore();
   const [rootEntries, setRootEntries] = useState<FileEntry[] | null>(null);
+  const [onlyUnassigned, setOnlyUnassigned] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<{ path: string; name: string } | null>(null);
+  const [fileContent, setFileContent] = useState("");
+  const [isBinary, setIsBinary] = useState(false);
+  const [loadingFile, setLoadingFile] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [runOutput, setRunOutput] = useState("");
+  const [fileError, setFileError] = useState("");
+
   const refreshToken = useBackgroundSync({
     topics: ["files", "projects", "global"],
     projectId: projectId === "none" ? null : projectId,
   });
+
+  const fetchFileContent = useCallback(async (filePath: string) => {
+    setLoadingFile(true);
+    setFileError("");
+    setRunOutput("");
+    try {
+      const params = new URLSearchParams({ project: projectId, path: filePath });
+      const res = await fetch(`/api/files/content?${params.toString()}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Не удалось прочитать файл");
+      setIsBinary(Boolean(data.binary));
+      setFileContent(data.content || "");
+    } catch (error) {
+      setFileError(error instanceof Error ? error.message : "Ошибка чтения файла");
+      setIsBinary(false);
+      setFileContent("");
+    } finally {
+      setLoadingFile(false);
+    }
+  }, [projectId]);
+
+  const handleOpenFile = useCallback((filePath: string, fileName: string) => {
+    setSelectedFile({ path: filePath, name: fileName });
+    void fetchFileContent(filePath);
+  }, [fetchFileContent]);
+
+  const saveFile = useCallback(async () => {
+    if (!selectedFile || isBinary) return;
+    setSaving(true);
+    setFileError("");
+    try {
+      const res = await fetch("/api/files/content", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project: projectId, path: selectedFile.path, content: fileContent }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Не удалось сохранить файл");
+    } catch (error) {
+      setFileError(error instanceof Error ? error.message : "Ошибка сохранения");
+    } finally {
+      setSaving(false);
+    }
+  }, [selectedFile, isBinary, projectId, fileContent]);
+
+  const runFile = useCallback(async () => {
+    if (!selectedFile) return;
+    setRunning(true);
+    setFileError("");
+    try {
+      const res = await fetch("/api/files/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project: projectId, path: selectedFile.path }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Не удалось выполнить файл");
+      setRunOutput(String(data.output || "(no output)"));
+    } catch (error) {
+      setRunOutput("");
+      setFileError(error instanceof Error ? error.message : "Ошибка запуска");
+    } finally {
+      setRunning(false);
+    }
+  }, [selectedFile, projectId]);
 
   useEffect(() => {
     setRootEntries(null);
@@ -244,18 +307,46 @@ export function FileTree({ projectId }: FileTreeProps) {
         if (Array.isArray(data)) setRootEntries(data);
       })
       .catch(() => {
-        if (!cancelled) {
-          setRootEntries((prev) => (prev === null ? [] : prev));
-        }
+        if (!cancelled) setRootEntries((prev) => (prev === null ? [] : prev));
       });
     return () => {
       cancelled = true;
     };
   }, [projectId, refreshToken]);
 
+  const rootVisible = useMemo(() => {
+    if (!rootEntries) return rootEntries;
+    if (!onlyUnassigned) return rootEntries;
+    return rootEntries.filter((entry) => entry.name !== "tasks");
+  }, [rootEntries, onlyUnassigned]);
+
+  const unassignedCount = useMemo(() => {
+    if (!rootEntries) return 0;
+    return rootEntries.filter((entry) => entry.name !== "tasks" && entry.name !== ".meta").length;
+  }, [rootEntries]);
+
+  const downloadHref = useMemo(() => {
+    if (!selectedFile) return "";
+    const params = new URLSearchParams({ project: projectId, path: selectedFile.path });
+    return `/api/files/download?${params.toString()}`;
+  }, [selectedFile, projectId]);
+
   return (
     <div className="text-xs">
-      {/* Project root button */}
+      <div className="mb-2 flex items-center justify-between gap-2 px-1">
+        <button
+          type="button"
+          onClick={() => setOnlyUnassigned((v) => !v)}
+          className={cn(
+            "rounded px-1.5 py-0.5 text-[10px] border",
+            onlyUnassigned ? "border-amber-500/60 text-amber-300" : "border-border text-muted-foreground"
+          )}
+        >
+          {onlyUnassigned ? "Показаны без задачи" : "Фильтр: без задачи"}
+        </button>
+        <span className="text-[10px] text-muted-foreground">Без привязки: {unassignedCount}</span>
+      </div>
+
       <button
         onClick={() => setCurrentPath("")}
         className={cn(
@@ -267,16 +358,12 @@ export function FileTree({ projectId }: FileTreeProps) {
         <span className="truncate font-medium">/</span>
       </button>
 
-      {rootEntries === null ? (
-        <span className="text-[10px] text-muted-foreground block pl-4 py-1">
-          {t("common.loading", "Loading...")}
-        </span>
-      ) : rootEntries.length === 0 ? (
-        <span className="text-[10px] text-muted-foreground block pl-4 py-1">
-          {t("files.noFiles", "No files")}
-        </span>
+      {rootVisible === null ? (
+        <span className="text-[10px] text-muted-foreground block pl-4 py-1">{t("common.loading", "Loading...")}</span>
+      ) : rootVisible.length === 0 ? (
+        <span className="text-[10px] text-muted-foreground block pl-4 py-1">{t("files.noFiles", "No files")}</span>
       ) : (
-        rootEntries.map((entry) => (
+        rootVisible.map((entry) => (
           <TreeNode
             key={entry.name}
             projectId={projectId}
@@ -286,9 +373,59 @@ export function FileTree({ projectId }: FileTreeProps) {
             depth={1}
             refreshToken={refreshToken}
             t={t}
+            onFileOpen={handleOpenFile}
           />
         ))
       )}
+
+      <Sheet open={Boolean(selectedFile)} onOpenChange={(open) => !open && setSelectedFile(null)}>
+        <SheetContent side="right" className="w-[95vw] sm:max-w-2xl p-0">
+          <SheetHeader className="border-b">
+            <SheetTitle className="truncate text-sm">{selectedFile?.name || "Файл"}</SheetTitle>
+            {selectedFile && <p className="text-xs text-muted-foreground break-all">{selectedFile.path}</p>}
+          </SheetHeader>
+
+          <div className="p-4 space-y-3 h-[calc(100dvh-110px)] overflow-y-auto">
+            <div className="flex flex-wrap gap-2">
+              <a href={downloadHref} download={selectedFile?.name || "file"} className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent">
+                <Download className="size-3.5" /> Скачать
+              </a>
+              {!isBinary && (
+                <button onClick={() => void saveFile()} disabled={saving || loadingFile} className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent disabled:opacity-60">
+                  <Save className="size-3.5" /> {saving ? "Сохранение..." : "Сохранить"}
+                </button>
+              )}
+              <button onClick={() => void runFile()} disabled={running || loadingFile} className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent disabled:opacity-60">
+                <Play className="size-3.5" /> {running ? "Запуск..." : "Запустить"}
+              </button>
+            </div>
+
+            {fileError && <div className="rounded border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-300">{fileError}</div>}
+
+            {loadingFile ? (
+              <div className="text-xs text-muted-foreground">Загрузка файла...</div>
+            ) : isBinary ? (
+              <div className="rounded border p-3 text-xs text-muted-foreground">
+                Бинарный файл. Просмотр/редактирование недоступны, но можно скачать.
+              </div>
+            ) : (
+              <textarea
+                value={fileContent}
+                onChange={(e) => setFileContent(e.target.value)}
+                className="h-[48dvh] w-full rounded border bg-background p-2 font-mono text-xs"
+                spellCheck={false}
+              />
+            )}
+
+            {runOutput && (
+              <div>
+                <p className="mb-1 text-xs font-medium">Output</p>
+                <pre className="max-h-[30dvh] overflow-auto rounded border bg-muted/30 p-2 text-[11px] whitespace-pre-wrap">{runOutput}</pre>
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
