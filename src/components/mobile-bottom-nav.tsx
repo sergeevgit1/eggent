@@ -32,7 +32,7 @@ export function MobileBottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 py-2 text-[11px] transition-colors",
+                "flex flex-col items-center justify-center gap-0.5 py-1.5 text-[11px] transition-colors",
                 active ? "text-foreground" : "text-muted-foreground"
               )}
             >
@@ -41,7 +41,7 @@ export function MobileBottomNav() {
             </Link>
           );
         })}
-        <div className="flex items-center justify-center py-1">
+        <div className="flex items-center justify-center py-0.5">
           <SystemNavigationSheet mode="mobile-more" />
         </div>
       </div>
