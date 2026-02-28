@@ -56,11 +56,6 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
           <MessageBubble key={message.id} message={message} />
         ))}
 
-        {!isLoading && messages.some((m) => m.role !== "user") && (
-          <div className="text-xs text-muted-foreground/80 py-1">
-            Форматирование: заголовки, списки, таблицы, изображения, код и mermaid‑схемы. Действия доступны в меню сообщения.
-          </div>
-        )}
 
         {isLoading && messages.length > 0 && (
           <div className="py-3">

@@ -10,6 +10,15 @@ import { getChatFiles } from "@/lib/storage/chat-files-store";
 
 const PROMPTS_DIR = path.join(process.cwd(), "src", "prompts");
 
+const PROMPT_CACHE_TTL_MS = 5 * 60 * 1000;
+const PROJECT_FILES_CACHE_TTL_MS = 60 * 1000;
+const CHAT_FILES_CACHE_TTL_MS = 20 * 1000;
+
+type CacheEntry<T> = { value: T; expiresAt: number };
+const promptTemplateCache = new Map<string, CacheEntry<string>>();
+const projectFilesCache = new Map<string, CacheEntry<{ name: string; path: string; size: number }[]>>();
+const chatFilesCache = new Map<string, CacheEntry<Awaited<ReturnType<typeof getChatFiles>>>>();
+
 function escapeXml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -22,10 +31,19 @@ function escapeXml(s: string): string {
  * Load a prompt template from the prompts directory
  */
 async function loadPrompt(name: string): Promise<string> {
+  const now = Date.now();
+  const cached = promptTemplateCache.get(name);
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+
   try {
     const filePath = path.join(PROMPTS_DIR, `${name}.md`);
-    return await fs.readFile(filePath, "utf-8");
+    const content = await fs.readFile(filePath, "utf-8");
+    promptTemplateCache.set(name, { value: content, expiresAt: now + PROMPT_CACHE_TTL_MS });
+    return content;
   } catch {
+    promptTemplateCache.set(name, { value: "", expiresAt: now + 10_000 });
     return "";
   }
 }
@@ -59,6 +77,30 @@ async function getAllProjectFilesRecursive(
   }
 
   return result;
+}
+
+async function getCachedProjectFiles(projectId: string): Promise<{ name: string; path: string; size: number }[]> {
+  const now = Date.now();
+  const cached = projectFilesCache.get(projectId);
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+
+  const files = await getAllProjectFilesRecursive(projectId);
+  projectFilesCache.set(projectId, { value: files, expiresAt: now + PROJECT_FILES_CACHE_TTL_MS });
+  return files;
+}
+
+async function getCachedChatFiles(chatId: string) {
+  const now = Date.now();
+  const cached = chatFilesCache.get(chatId);
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+
+  const files = await getChatFiles(chatId);
+  chatFilesCache.set(chatId, { value: files, expiresAt: now + CHAT_FILES_CACHE_TTL_MS });
+  return files;
 }
 
 /**
@@ -157,10 +199,10 @@ export async function buildSystemPrompt(options: {
     // 5a. Project directory files
     if (options.projectId) {
       try {
-        const projectFiles = await getAllProjectFilesRecursive(options.projectId);
+        const projectFiles = await getCachedProjectFiles(options.projectId);
         if (projectFiles.length > 0) {
           const rows = projectFiles
-            .slice(0, 50) // Limit to 50 files to avoid huge prompts
+            .slice(0, 25) // Limit to 25 files to reduce first-token latency
             .map((f) => `| ${f.name} | ${f.path} | ${formatFileSize(f.size)} |`)
             .join("\n");
           filesSections.push(
@@ -177,7 +219,7 @@ export async function buildSystemPrompt(options: {
     // 5b. Chat uploaded files
     if (options.chatId) {
       try {
-        const chatFiles = await getChatFiles(options.chatId);
+        const chatFiles = await getCachedChatFiles(options.chatId);
         if (chatFiles.length > 0) {
           const rows = chatFiles
             .map((f) => `| ${f.name} | ${f.path} | ${formatFileSize(f.size)} |`)
