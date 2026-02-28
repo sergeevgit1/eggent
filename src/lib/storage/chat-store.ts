@@ -24,6 +24,8 @@ export async function getAllChats(): Promise<ChatListItem[]> {
         id: chat.id,
         title: chat.title,
         projectId: chat.projectId,
+        isPinned: chat.isPinned ?? false,
+        isArchived: chat.isArchived ?? false,
         createdAt: chat.createdAt,
         updatedAt: chat.updatedAt,
         messageCount: chat.messages.length,
@@ -106,6 +108,25 @@ export async function deleteChatsByProjectId(projectId: string): Promise<number>
   return deleted;
 }
 
+export async function updateChat(
+  chatId: string,
+  updates: { title?: string; isPinned?: boolean; isArchived?: boolean }
+): Promise<Chat | null> {
+  const existing = await getChat(chatId);
+  if (!existing) return null;
+
+  const next: Chat = {
+    ...existing,
+    title: updates.title ?? existing.title,
+    isPinned: updates.isPinned ?? existing.isPinned ?? false,
+    isArchived: updates.isArchived ?? existing.isArchived ?? false,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await saveChat(next);
+  return next;
+}
+
 export async function createChat(
   id: string,
   title: string,
@@ -116,6 +137,8 @@ export async function createChat(
     id,
     title,
     projectId,
+    isPinned: false,
+    isArchived: false,
     messages: [],
     createdAt: now,
     updatedAt: now,

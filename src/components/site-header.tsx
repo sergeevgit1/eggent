@@ -1,19 +1,54 @@
 "use client"
 
-import { Moon, SidebarIcon, Sun } from "lucide-react"
+import { MessageSquarePlus, SidebarIcon } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
 import { useSidebar } from "@/components/ui/sidebar"
 import { useI18n } from "@/components/i18n-provider"
 import { SystemNavigationSheet } from "@/components/system-navigation-sheet"
+import { useAppStore } from "@/store/app-store"
 
 export function SiteHeader({ title }: { title?: string }) {
   const { toggleSidebar } = useSidebar()
-  const { locale, setLocale, theme, setTheme, t } = useI18n()
+  const { t } = useI18n()
+  const pathname = usePathname()
+  const router = useRouter()
+  const { chats, activeChatId, setActiveChatId } = useAppStore()
+
+  const mappedTitle = (() => {
+    if (!title) return "Eggent"
+    const map: Record<string, string> = {
+      Chat: t("nav.chats", "Chats"),
+      Projects: t("nav.projects", "Projects"),
+      "Memory Dashboard": t("nav.memory", "Memory"),
+      Skills: t("nav.skills", "Skills"),
+      MCP: t("nav.mcp", "MCP"),
+      "Cron Jobs": t("nav.cron", "Cron Jobs"),
+      Settings: t("nav.settings", "Settings"),
+      API: t("nav.api", "API"),
+      Messengers: t("nav.messengers", "Messengers"),
+    }
+    return map[title] || title
+  })()
+
+  const activeChatTitle = (() => {
+    const current = chats.find((chat) => chat.id === activeChatId)
+    if (!current) return t("chat.new", "Новый чат")
+    return current.title || t("chat.new", "Новый чат")
+  })()
+
+  const centerTitle = pathname === "/dashboard" ? activeChatTitle : mappedTitle
+
+  const handleNewChat = () => {
+    setActiveChatId(null)
+    if (pathname !== "/dashboard") {
+      router.push("/dashboard")
+    }
+  }
 
   return (
-    <header className="bg-background sticky top-0 z-50 flex w-full items-center border-b">
-      <div className="flex h-(--header-height) w-full items-center gap-2 px-4">
+    <header className="bg-background sticky top-0 z-50 flex w-full items-center">
+      <div className="relative flex h-(--header-height) w-full items-center gap-2 px-4">
         <Button
           className="h-8 w-8"
           variant="ghost"
@@ -22,54 +57,23 @@ export function SiteHeader({ title }: { title?: string }) {
         >
           <SidebarIcon />
         </Button>
-        <Separator orientation="vertical" className="mr-2 h-4" />
-        <h1 className="text-sm font-medium">
-          {(() => {
-            if (!title) return "Eggent";
-            const map: Record<string, string> = {
-              Chat: t("nav.chats", "Chats"),
-              Projects: t("nav.projects", "Projects"),
-              "Memory Dashboard": t("nav.memory", "Memory"),
-              Skills: t("nav.skills", "Skills"),
-              MCP: t("nav.mcp", "MCP"),
-              "Cron Jobs": t("nav.cron", "Cron Jobs"),
-              Settings: t("nav.settings", "Settings"),
-              API: t("nav.api", "API"),
-              Messengers: t("nav.messengers", "Messengers"),
-            };
-            return map[title] || title;
-          })()}
+
+        <h1 className="pointer-events-none absolute left-1/2 max-w-[50%] -translate-x-1/2 truncate text-center text-sm font-medium">
+          {centerTitle}
         </h1>
-        <div className="ml-auto flex items-center gap-2">
-          <SystemNavigationSheet mode="header" />
-          <select
-            aria-label="Language"
-            value={locale}
-            onChange={(e) => setLocale(e.target.value as "en" | "ru")}
-            className="h-8 rounded-md border bg-background px-2 text-xs"
-          >
-            <option value="en">English</option>
-            <option value="ru">Русский</option>
-          </select>
+
+        <div className="ml-auto flex items-center gap-1">
           <Button
-            type="button"
-            variant="outline"
+            className="h-8 w-8"
+            variant="ghost"
             size="icon"
-            aria-label={theme === "dark" ? t("theme.toLight", "Switch to light theme") : t("theme.toDark", "Switch to dark theme")}
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="relative h-8 w-8 overflow-hidden"
+            onClick={handleNewChat}
+            aria-label={t("chat.new", "Новый чат")}
+            title={t("chat.new", "Новый чат")}
           >
-            <Sun
-              className={`absolute size-4 transition-all duration-300 ${
-                theme === "dark" ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-0 opacity-0"
-              }`}
-            />
-            <Moon
-              className={`absolute size-4 transition-all duration-300 ${
-                theme === "dark" ? "rotate-90 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100"
-              }`}
-            />
+            <MessageSquarePlus className="size-4" />
           </Button>
+          <SystemNavigationSheet mode="header" />
         </div>
       </div>
     </header>

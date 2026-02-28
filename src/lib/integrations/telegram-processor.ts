@@ -22,7 +22,11 @@ import {
 } from "@/lib/storage/external-session-store";
 import { getAllProjects } from "@/lib/storage/project-store";
 
-import { toTelegramHtml, toTelegramPlainText } from "@/lib/integrations/telegram-format";
+import {
+  splitTelegramText,
+  toTelegramHtml,
+  toTelegramPlainText,
+} from "@/lib/integrations/telegram-format";
 
 const TELEGRAM_FILE_MAX_BYTES = 30 * 1024 * 1024;
 
@@ -55,7 +59,7 @@ function normalizeTelegramCurrentPath(rawPath: string | undefined): string {
 
 function parseTelegramError(status: number, payload: TelegramApiResponse | null): string {
   const description = payload?.description?.trim();
-  return description ? `Telegram API error (${status}): ${description}` : `Telegram API error (${status})`;
+  return description ? `Ошибка Telegram API (${status}): ${description}` : `Ошибка Telegram API (${status})`;
 }
 
 async function callTelegramApi(botToken: string, method: string, body?: Record<string, unknown>): Promise<TelegramApiResponse> {
@@ -128,7 +132,7 @@ async function downloadTelegramFile(botToken: string, fileId: string): Promise<B
   const response = await fetch(`https://api.telegram.org/file/bot${botToken}/${filePath}`);
   if (!response.ok) throw new Error(`Failed to download Telegram file (${response.status})`);
   const bytes = await response.arrayBuffer();
-  if (bytes.byteLength > TELEGRAM_FILE_MAX_BYTES) throw new Error(`Telegram file is too large (${bytes.byteLength} bytes). Max supported size is ${TELEGRAM_FILE_MAX_BYTES} bytes.`);
+  if (bytes.byteLength > TELEGRAM_FILE_MAX_BYTES) throw new Error(`Файл Telegram слишком большой (${bytes.byteLength} байт). Максимальный размер: ${TELEGRAM_FILE_MAX_BYTES} байт.`);
   return Buffer.from(bytes);
 }
 
@@ -148,7 +152,12 @@ function extractAccessCodeCandidate(text: string): string | null {
 function normalizeOutgoingText(text: string): string {
   return toTelegramPlainText(text);
 }
-async function sendTelegramMessage(botToken: string, chatId: number | string, text: string, replyToMessageId?: number): Promise<void> {
+async function sendTelegramChunk(
+  botToken: string,
+  chatId: number | string,
+  text: string,
+  replyToMessageId?: number
+): Promise<void> {
   const plain = normalizeOutgoingText(text);
   const html = toTelegramHtml(text);
   const primaryBody = {
@@ -166,7 +175,6 @@ async function sendTelegramMessage(botToken: string, chatId: number | string, te
   let payload = (await response.json().catch(() => null)) as { ok?: boolean; description?: string } | null;
 
   if (!response.ok || !payload?.ok) {
-    // Fallback to plain text without parse_mode if markdown rendering failed
     response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -181,6 +189,20 @@ async function sendTelegramMessage(botToken: string, chatId: number | string, te
 
   if (!response.ok || !payload?.ok) {
     throw new Error(`Telegram sendMessage failed (${response.status})${payload?.description ? `: ${payload.description}` : ""}`);
+  }
+}
+
+async function sendTelegramMessage(botToken: string, chatId: number | string, text: string, replyToMessageId?: number): Promise<void> {
+  const chunks = splitTelegramText(text);
+  if (chunks.length <= 1) {
+    await sendTelegramChunk(botToken, chatId, chunks[0] || text, replyToMessageId);
+    return;
+  }
+
+  for (let i = 0; i < chunks.length; i += 1) {
+    const chunk = chunks[i];
+    const prefix = chunks.length > 1 ? `[${i + 1}/${chunks.length}]\n` : "";
+    await sendTelegramChunk(botToken, chatId, `${prefix}${chunk}`, i === 0 ? replyToMessageId : undefined);
   }
 }
 
@@ -239,13 +261,15 @@ async function resolveTelegramProjectContext(sessionId: string, defaultProjectId
   const projectById = new Map(projects.map((project) => [project.id, project]));
   let resolvedProjectId: string | undefined;
   const explicitProjectId = defaultProjectId?.trim() || "";
-  if (explicitProjectId) {
-    if (!projectById.has(explicitProjectId)) throw new Error(`Project "${explicitProjectId}" not found`);
+  if (session.activeProjectId && projectById.has(session.activeProjectId)) {
+    // Always prioritize the project already bound to this Telegram session/chat.
+    resolvedProjectId = session.activeProjectId;
+  } else if (explicitProjectId && projectById.has(explicitProjectId)) {
     resolvedProjectId = explicitProjectId;
     session.activeProjectId = explicitProjectId;
-  } else if (session.activeProjectId && projectById.has(session.activeProjectId)) {
-    resolvedProjectId = session.activeProjectId;
   } else if (projects.length > 0) {
+    // Fallback path: if no valid bound/default project exists,
+    // automatically use the first available project instead of failing the whole update.
     resolvedProjectId = projects[0].id;
     session.activeProjectId = projects[0].id;
   } else {
@@ -264,7 +288,7 @@ async function ensureTelegramExternalChatContext(sessionId: string, defaultProje
   }
   if (!resolvedChatId) {
     resolvedChatId = crypto.randomUUID();
-    await createChat(resolvedChatId, `External session ${session.id}`, resolvedProjectId);
+    await createChat(resolvedChatId, `Внешняя сессия ${session.id}`, resolvedProjectId);
   }
   session.activeChats[projectKey] = resolvedChatId;
   session.currentPaths[projectKey] = normalizeTelegramCurrentPath(session.currentPaths[projectKey]);
@@ -273,19 +297,22 @@ async function ensureTelegramExternalChatContext(sessionId: string, defaultProje
   return { chatId: resolvedChatId, projectId: resolvedProjectId, currentPath: session.currentPaths[projectKey] ?? "" };
 }
 
-function helpText(activeProject?: { id?: string; name?: string }): string {
+function helpText(activeProject?: { id?: string; name?: string }, t?: (key: string, fallback: string) => string): string {
   const activeProjectLine = activeProject?.id
-    ? `Active project: ${activeProject.name ? `${activeProject.name} (${activeProject.id})` : activeProject.id}`
-    : "Active project: not selected";
+    ? (t ? t("telegram.help.activeProject", "Active project: {{name}} ({{id}})")
+         .replace("{{name}}", activeProject.name || activeProject.id)
+         .replace("{{id}}", activeProject.id)
+       : `Active project: ${activeProject.name ? `${activeProject.name} (${activeProject.id})` : activeProject.id}`)
+    : (t ? t("telegram.help.noProject", "Active project: not selected") : "Active project: not selected");
   return [
-    "Telegram connection is active.",
+    t ? t("telegram.connection.active", "Telegram connection is active.") : "Telegram connection is active.",
     activeProjectLine,
     "",
-    "Commands:",
-    "/start - show this help",
-    "/help - show this help",
-    "/code <access_code> - activate access for your Telegram user",
-    "/new - start a new conversation (reset context)",
+    t ? t("telegram.commands.title", "Commands:") : "Commands:",
+    t ? t("telegram.commands.start", "/start - show this help") : "/start - show this help",
+    t ? t("telegram.commands.help", "/help - show this help") : "/help - show this help",
+    t ? t("telegram.commands.code", "/code <access_code> - activate access for your Telegram user") : "/code <access_code> - activate access for your Telegram user",
+    t ? t("telegram.commands.new", "/new - start a new conversation (reset context)") : "/new - start a new conversation (reset context)",
   ].join("\n");
 }
 
@@ -354,10 +381,10 @@ export async function processTelegramUpdate(params: {
 
   if (!incomingText) {
     if (incomingSavedFile) {
-      await sendTelegramMessage(botToken, chatId, `File "${incomingSavedFile.name}" saved to chat files.`, messageId);
+      await sendTelegramMessage(botToken, chatId, `Файл "${incomingSavedFile.name}" сохранен в файлы чата.`, messageId);
       return { ok: true, reason: "file_saved" };
     }
-    await sendTelegramMessage(botToken, chatId, "Only text messages and file uploads are supported right now.", messageId);
+    await sendTelegramMessage(botToken, chatId, "Сейчас поддерживаются только текстовые сообщения и загрузка файлов.", messageId);
     return { ok: true, reason: "non_text" };
   }
 
@@ -379,7 +406,7 @@ export async function processTelegramUpdate(params: {
         runtimeData: { telegram: { botToken, chatId, replyToMessageId: messageId ?? null } },
       }),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Agent response timeout")), timeoutMs)
+        setTimeout(() => reject(new Error("Таймаут ответа агента")), timeoutMs)
       ),
     ]);
     await sendTelegramMessage(botToken, chatId, result.reply, messageId);
@@ -390,7 +417,7 @@ export async function processTelegramUpdate(params: {
       await sendTelegramMessage(botToken, chatId, `Ошибка: ${errorMessage}`, messageId);
       return { ok: true, reason: "handled_error" };
     }
-    if (error instanceof Error && error.message === "Agent response timeout") {
+    if (error instanceof Error && error.message === "Таймаут ответа агента") {
       await sendTelegramMessage(botToken, chatId, "⏱️ Превышено время ожидания ответа агента. Попробуйте короче сформулировать запрос или повторите позже.", messageId);
       return { ok: true, reason: "timeout" };
     }

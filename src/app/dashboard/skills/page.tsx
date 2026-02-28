@@ -232,13 +232,12 @@ export default function SkillsPage() {
   }
 
   return (
-    <div className="[--header-height:calc(--spacing(14))]">
-      <SidebarProvider className="flex flex-col">
-        <SiteHeader title="Skills" />
-        <div className="flex flex-1">
-          <AppSidebar />
-          <SidebarInset>
-            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 max-w-5xl mx-auto w-full">
+    <div className="h-svh overflow-hidden [--header-height:calc(--spacing(14))]">
+      <SidebarProvider className="flex h-full min-h-0">
+        <AppSidebar />
+        <SidebarInset className="min-h-0 overflow-hidden">
+          <SiteHeader title="Skills" />
+          <div className="flex h-[calc(100svh-var(--header-height))] min-h-0 flex-1 flex-col gap-4 overflow-auto p-4 md:p-6 max-w-5xl mx-auto w-full">
               <div className="space-y-1">
                 <h2 className="text-2xl font-semibold">{t("nav.skills", "Skills")}</h2>
                 <p className="text-sm text-muted-foreground">
@@ -419,9 +418,8 @@ export default function SkillsPage() {
                   ))}
                 </div>
               )}
-            </div>
-          </SidebarInset>
-        </div>
+          </div>
+        </SidebarInset>
       </SidebarProvider>
 
       <Sheet open={isSkillSheetOpen} onOpenChange={setIsSkillSheetOpen}>

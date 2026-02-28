@@ -1,4 +1,5 @@
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { InteractionUnlock } from "@/components/interaction-unlock";
 
 export default function DashboardLayout({
   children,
@@ -7,6 +8,7 @@ export default function DashboardLayout({
 }) {
   return (
     <>
+      <InteractionUnlock />
       {children}
       <MobileBottomNav />
     </>

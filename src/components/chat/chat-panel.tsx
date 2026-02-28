@@ -220,6 +220,8 @@ export function ChatPanel() {
     addChat,
   } = useAppStore();
   const [input, setInput] = useState("");
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [backgroundRecovering, setBackgroundRecovering] = useState(false);
 
   // Internal chatId that stays stable during a message send.
   // Pre-generate a UUID so useChat always has a consistent id.
@@ -275,6 +277,18 @@ export function ChatPanel() {
     transport,
     onError: (error) => {
       console.error("Chat error:", error);
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Ошибка ответа агента. Попробуйте ещё раз.";
+
+      if (message.toLowerCase().includes("load failed")) {
+        setLastError("Соединение прервано, продолжаю и подтяну результат из истории.");
+        setBackgroundRecovering(true);
+        stop();
+      } else {
+        setLastError(message);
+      }
     },
   });
 
@@ -295,6 +309,7 @@ export function ChatPanel() {
     if (activeChatId === null) {
       setMessages([]);
     }
+    setLastError(null);
   }, [activeChatId, setMessages]);
 
   // Keep active chat history synced with background updates.
@@ -313,21 +328,32 @@ export function ChatPanel() {
       })
       .then((chat) => {
         if (cancelled) return;
-        // Don't overwrite while user is sending or stream is in progress
         if (statusRef.current === "submitted" || statusRef.current === "streaming") {
           return;
         }
 
         if (!chat?.messages) {
           setMessages([]);
+          if (backgroundRecovering) {
+            setBackgroundRecovering(false);
+            setLastError(null);
+          }
           return;
         }
 
         const nextMessages = chatMessagesToUIMessages(chat.messages);
         if (areUIMessagesEquivalentById(messagesRef.current, nextMessages)) {
+          if (backgroundRecovering) {
+            setBackgroundRecovering(false);
+            setLastError(null);
+          }
           return;
         }
         setMessages(nextMessages);
+        if (backgroundRecovering) {
+          setBackgroundRecovering(false);
+          setLastError(null);
+        }
       })
       .catch(() => {
         // Keep last known messages on transient polling/network errors.
@@ -335,7 +361,7 @@ export function ChatPanel() {
     return () => {
       cancelled = true;
     };
-  }, [activeChatId, setMessages, status, syncTick]);
+  }, [activeChatId, setMessages, status, syncTick, backgroundRecovering]);
 
   const refreshProjects = useCallback(async () => {
     try {
@@ -436,6 +462,7 @@ export function ChatPanel() {
   const onSubmit = useCallback(() => {
     if (!input.trim() || isLoading) return;
 
+    setLastError(null);
     pendingProjectSwitchRef.current = true;
     submissionStartCountRef.current = messagesRef.current.length;
     handledSwitchToolCallsRef.current.clear();
@@ -472,7 +499,14 @@ export function ChatPanel() {
   ]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
+      {lastError ? (
+        <div className="px-3 pt-3">
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {lastError}
+          </div>
+        </div>
+      ) : null}
       <ChatMessages messages={messages} isLoading={isLoading} />
       <ChatInput
         input={input}

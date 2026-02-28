@@ -59,7 +59,7 @@ function getTelegramRuntimeData(context: AgentContext): TelegramRuntimeData | nu
 function resolveOutgoingFilePath(context: AgentContext, rawPath: string): string {
   const value = rawPath.trim();
   if (!value) {
-    throw new Error("file_path is required");
+    throw new Error("file_path обязателен");
   }
   if (path.isAbsolute(value)) {
     return path.resolve(value);
@@ -96,7 +96,7 @@ async function resolveReadableFilePath(
 ): Promise<string> {
   const value = rawPath.trim();
   if (!value) {
-    throw new Error("file_path is required");
+    throw new Error("file_path обязателен");
   }
 
   const normalizedInput = value.replace(/\\/g, "/").replace(/^\.\/+/, "");
@@ -610,7 +610,7 @@ export function createAgentTools(
           error:
             error instanceof Error
               ? error.message
-              : "Failed to create project.",
+              : "Не удалось создать проект.",
         };
       }
     },
@@ -731,7 +731,7 @@ export function createAgentTools(
           error:
             error instanceof Error
               ? error.message
-              : "Failed to read text file.",
+              : "Не удалось прочитать текстовый файл.",
         };
       }
     },
@@ -785,7 +785,7 @@ export function createAgentTools(
           error:
             error instanceof Error
               ? error.message
-              : "Failed to read PDF file.",
+              : "Не удалось прочитать PDF файл.",
         };
       }
     },

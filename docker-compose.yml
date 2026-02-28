@@ -8,6 +8,13 @@ services:
     image: eggent:local
     restart: unless-stopped
     init: true
+    user: "0:0"
+    privileged: true
+    cap_add:
+      - ALL
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
     env_file:
       - .env
     environment:

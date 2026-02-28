@@ -79,7 +79,7 @@ export function ToolOutput({ toolName, args, result }: ToolOutputProps) {
   if (toolName === "response") return null;
 
   return (
-    <div className="border rounded-lg my-2 overflow-hidden bg-card">
+    <div className="w-full max-w-full border rounded-lg my-2 overflow-hidden bg-card">
       <button
         onClick={() => setExpanded(!expanded)}
         className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-muted/50 transition-colors"
@@ -125,7 +125,7 @@ export function ToolOutput({ toolName, args, result }: ToolOutputProps) {
               <p className="text-xs text-muted-foreground mb-1 font-medium">
                 {t("chat.tool.output", "Output:")}
               </p>
-              <pre className="text-xs bg-muted/50 rounded p-2 overflow-x-auto whitespace-pre-wrap max-h-64 overflow-y-auto">
+              <pre className="text-xs bg-muted/50 rounded p-2 overflow-x-auto whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
                 {result}
               </pre>
             </div>

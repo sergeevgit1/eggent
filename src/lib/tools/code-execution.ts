@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from "child_process";
+import fs from "fs/promises";
 import type { AppSettings } from "@/lib/types";
 
 // Persistent shell sessions
@@ -23,25 +24,83 @@ export async function executeCode(
 
     switch (runtime) {
       case "python":
-        command = "python3";
+        command = await resolveRuntimeCommand("python");
         args = ["-c", code];
         break;
       case "nodejs":
-        command = "node";
+        command = await resolveRuntimeCommand("nodejs");
         args = ["-e", code];
         break;
       case "terminal":
-        command = process.env.SHELL?.trim() || "sh";
+        command = await resolveShellCommand();
         args = ["-c", rewriteAptCommandsWithSudo(code)];
         break;
       default:
         return `Error: Unknown runtime '${runtime}'`;
     }
 
-    const result = await runCommand(command, args, timeout, maxOutput, cwd);
+    const executionCwd = await resolveExecutionCwd(cwd);
+    const result = await runCommand(command, args, timeout, maxOutput, executionCwd);
     return result;
   } catch (error) {
     return `Execution error: ${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
+async function resolveShellCommand(): Promise<string> {
+  const candidates = [
+    process.env.SHELL?.trim(),
+    "/bin/bash",
+    "/usr/bin/bash",
+    "/bin/sh",
+    "/usr/bin/sh",
+    "bash",
+    "sh",
+  ].filter((v): v is string => Boolean(v));
+
+  for (const candidate of candidates) {
+    try {
+      if (candidate.includes("/")) {
+        await fs.access(candidate);
+      }
+      return candidate;
+    } catch {
+      continue;
+    }
+  }
+
+  return "sh";
+}
+
+async function resolveRuntimeCommand(runtime: "python" | "nodejs"): Promise<string> {
+  const runtimeCandidates: Record<"python" | "nodejs", string[]> = {
+    python: ["python3", "/usr/bin/python3", "/usr/local/bin/python3", "python", "/usr/bin/python"],
+    nodejs: ["node", "/usr/bin/node", "/usr/local/bin/node", "nodejs", "/usr/bin/nodejs"],
+  };
+
+  for (const candidate of runtimeCandidates[runtime]) {
+    try {
+      if (candidate.includes("/")) {
+        await fs.access(candidate);
+      }
+      return candidate;
+    } catch {
+      continue;
+    }
+  }
+
+  return runtime === "python" ? "python3" : "node";
+}
+
+async function resolveExecutionCwd(requestedCwd?: string): Promise<string> {
+  const fallback = process.cwd();
+  const candidate = requestedCwd?.trim() ? requestedCwd : fallback;
+
+  try {
+    await fs.mkdir(candidate, { recursive: true });
+    return candidate;
+  } catch {
+    return fallback;
   }
 }
 

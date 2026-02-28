@@ -184,12 +184,12 @@ export function ChatInput({
 
   return (
     <div
-      className={`shrink-0 border-t bg-background px-4 pt-3 pb-2 md:p-4 transition-colors ${isDragging ? "bg-primary/5 border-primary" : ""}`}
+      className={`shrink-0 bg-background px-4 pt-3 pb-2 md:p-4 transition-colors ${isDragging ? "bg-primary/5" : ""}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto w-full max-w-3xl min-w-0">
         {/* Uploaded files preview */}
         {(uploadedFiles.length > 0 || uploadingFiles.length > 0) && (
           <div className="mb-2 flex flex-wrap gap-2">

@@ -60,6 +60,19 @@ export async function POST(req: NextRequest) {
       headers: {
         "X-Chat-Id": resolvedChatId,
       },
+      consumeSseStream: async ({ stream }) => {
+        const reader = stream.getReader();
+        try {
+          while (true) {
+            const { done } = await reader.read();
+            if (done) break;
+          }
+        } catch {
+          // non-critical
+        } finally {
+          reader.releaseLock();
+        }
+      },
     });
   } catch (error) {
     console.error("Chat API error:", error);

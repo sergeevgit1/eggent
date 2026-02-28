@@ -2,7 +2,7 @@
 
 import { FormEvent, Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, LockKeyhole, Moon, Sun } from "lucide-react";
+import { Loader2, LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +23,7 @@ function LoginPageClient() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { locale, setLocale, theme, setTheme, t } = useI18n();
+  const { t } = useI18n();
 
   const nextPath = useMemo(
     () => normalizeNextPath(searchParams.get("next")),
@@ -74,36 +74,6 @@ function LoginPageClient() {
           <div className="mb-6 flex items-center gap-2">
             <LockKeyhole className="size-5 text-primary" />
             <h1 className="text-xl font-semibold">{t("login.title", "Eggent Login")}</h1>
-            <div className="ml-auto flex items-center gap-2">
-              <select
-                aria-label="Language"
-                value={locale}
-                onChange={(e) => setLocale(e.target.value as "en" | "ru")}
-                className="h-8 rounded-md border bg-background px-2 text-xs"
-              >
-                <option value="en">English</option>
-                <option value="ru">Русский</option>
-              </select>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="relative h-8 w-8 overflow-hidden"
-              >
-                <Sun
-                  className={`absolute size-4 transition-all duration-300 ${
-                    theme === "dark" ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-0 opacity-0"
-                  }`}
-                />
-                <Moon
-                  className={`absolute size-4 transition-all duration-300 ${
-                    theme === "dark" ? "rotate-90 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100"
-                  }`}
-                />
-              </Button>
-            </div>
           </div>
 
           <p className="mb-6 text-sm text-muted-foreground">

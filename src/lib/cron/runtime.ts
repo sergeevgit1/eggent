@@ -1,7 +1,7 @@
 import { CronScheduler } from "@/lib/cron/service";
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var __eggentCronScheduler__: CronScheduler | undefined;
 }
 

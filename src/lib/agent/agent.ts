@@ -325,6 +325,7 @@ export async function runAgent(options: {
   projectId?: string;
   currentPath?: string;
   agentNumber?: number;
+  onFinish?: () => void;
 }) {
   const settings = await getSettings();
   const model = createModel(settings.chatModel);
@@ -448,6 +449,14 @@ export async function runAgent(options: {
         projectId: options.projectId ?? null,
         reason: "agent_turn_finished",
       });
+
+      if (typeof options.onFinish === "function") {
+        try {
+          options.onFinish();
+        } catch {
+          // non-critical callback
+        }
+      }
     },
   });
 

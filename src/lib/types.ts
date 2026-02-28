@@ -83,6 +83,8 @@ export interface Chat {
   id: string;
   title: string;
   projectId?: string;
+  isPinned?: boolean;
+  isArchived?: boolean;
   messages: ChatMessage[];
   createdAt: string;
   updatedAt: string;
@@ -92,6 +94,8 @@ export interface ChatListItem {
   id: string;
   title: string;
   projectId?: string;
+  isPinned?: boolean;
+  isArchived?: boolean;
   createdAt: string;
   updatedAt: string;
   messageCount: number;

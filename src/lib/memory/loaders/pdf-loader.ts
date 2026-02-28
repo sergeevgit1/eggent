@@ -3,7 +3,6 @@ import fs from "fs/promises";
 import { LoadedDocument } from "./index";
 
 // Define strict types for the local variables to avoid "any"
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 export async function loadPdf(filePath: string): Promise<LoadedDocument> {
     const dataBuffer = await fs.readFile(filePath);
