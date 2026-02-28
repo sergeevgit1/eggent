@@ -64,9 +64,11 @@ function looksLikeUnicodeDiagram(text: string): boolean {
   return diagramLines.length >= 2;
 }
 
-function compactReasoning(input: string): string {
+function compactReasoning(input: string, mode: "off" | "compact" | "verbose"): string {
+  if (mode === "off") return "";
   const normalized = (input || "").replace(/\s+/g, " ").trim();
   if (!normalized) return "";
+  if (mode === "verbose") return normalized;
   if (normalized.length <= 260) return normalized;
   return `${normalized.slice(0, 257)}…`;
 }
@@ -82,7 +84,7 @@ function slugifyHeading(text: string): string {
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
-  const { t } = useI18n();
+  const { t, reasoningMode } = useI18n();
   const isUser = message.role === "user";
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -100,7 +102,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     .join("\n")
     .trim();
 
-  const reasoningPreview = useMemo(() => compactReasoning(reasoningRaw), [reasoningRaw]);
+  const reasoningPreview = useMemo(
+    () => compactReasoning(reasoningRaw, reasoningMode),
+    [reasoningRaw, reasoningMode]
+  );
 
   const textContent = useMemo(
     () => (isUser ? rawTextContent : sanitizeAssistantText(rawTextContent)),

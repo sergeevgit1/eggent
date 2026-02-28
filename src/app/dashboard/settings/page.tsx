@@ -14,7 +14,7 @@ import type { AppSettings } from "@/lib/types";
 import { useI18n } from "@/components/i18n-provider";
 
 export default function SettingsPage() {
-  const { t } = useI18n();
+  const { t, locale, setLocale, theme, setTheme, reasoningMode, setReasoningMode } = useI18n();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -168,6 +168,77 @@ export default function SettingsPage() {
                   )}
                 </Button>
               </div>
+
+              <section className="border rounded-xl p-5 bg-card space-y-4">
+                <h3 className="font-semibold text-lg">{t("settings.appearance", "Appearance")}</h3>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label>{t("settings.language", "Language")}</Label>
+                    <select
+                      aria-label={t("settings.language", "Language")}
+                      value={locale}
+                      onChange={(e) => setLocale(e.target.value as "en" | "ru")}
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="en">English</option>
+                      <option value="ru">Русский</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{t("settings.theme", "Theme")}</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant={theme === "light" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setTheme("light")}
+                      >
+                        {t("theme.light", "Light")}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={theme === "dark" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setTheme("dark")}
+                      >
+                        {t("theme.dark", "Dark")}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{t("settings.reasoning", "Reasoning")}</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Button
+                        type="button"
+                        variant={reasoningMode === "off" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setReasoningMode("off")}
+                      >
+                        {t("settings.reasoning.off", "Off")}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={reasoningMode === "compact" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setReasoningMode("compact")}
+                      >
+                        {t("settings.reasoning.compact", "Compact")}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={reasoningMode === "verbose" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setReasoningMode("verbose")}
+                      >
+                        {t("settings.reasoning.verbose", "Verbose")}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </section>
 
               <ChatModelWizard settings={settings} updateSettings={updateSettings} />
               <EmbeddingsModelWizard settings={settings} updateSettings={updateSettings} />

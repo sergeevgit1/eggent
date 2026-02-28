@@ -19,6 +19,15 @@ const messages: Record<Locale, Dict> = {
     "nav.mcp": "MCP",
     "nav.cron": "Cron Jobs",
     "nav.settings": "Settings",
+    "settings.appearance": "Appearance",
+    "settings.language": "Language",
+    "settings.theme": "Theme",
+    "theme.light": "Light",
+    "theme.dark": "Dark",
+    "settings.reasoning": "Reasoning",
+    "settings.reasoning.off": "Off",
+    "settings.reasoning.compact": "Compact",
+    "settings.reasoning.verbose": "Verbose",
     "nav.api": "API",
     "nav.messengers": "Messengers",
     "nav.docs": "Documentation",
@@ -311,6 +320,15 @@ const messages: Record<Locale, Dict> = {
     "nav.mcp": "MCP",
     "nav.cron": "Крон-задачи",
     "nav.settings": "Настройки",
+    "settings.appearance": "Внешний вид",
+    "settings.language": "Язык",
+    "settings.theme": "Тема",
+    "theme.light": "Светлая",
+    "theme.dark": "Тёмная",
+    "settings.reasoning": "Рассуждения",
+    "settings.reasoning.off": "Выкл",
+    "settings.reasoning.compact": "Кратко",
+    "settings.reasoning.verbose": "Подробно",
     "nav.api": "API",
     "nav.messengers": "Мессенджеры",
     "nav.docs": "Документация",
@@ -594,11 +612,15 @@ const messages: Record<Locale, Dict> = {
   },
 };
 
+export type ReasoningMode = "off" | "compact" | "verbose";
+
 type I18nContextValue = {
   locale: Locale;
   setLocale: (locale: Locale) => void;
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  reasoningMode: ReasoningMode;
+  setReasoningMode: (mode: ReasoningMode) => void;
   t: (key: string, fallback?: string) => string;
 };
 
@@ -607,6 +629,7 @@ const I18nContext = createContext<I18nContextValue | null>(null);
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>("en");
   const [theme, setThemeState] = useState<Theme>("light");
+  const [reasoningMode, setReasoningModeState] = useState<ReasoningMode>("compact");
 
   useEffect(() => {
     const saved = (localStorage.getItem("eggent.locale") as Locale | null) || null;
@@ -620,6 +643,11 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     const savedTheme = (localStorage.getItem("eggent.theme") as Theme | null) || null;
     if (savedTheme === "dark" || savedTheme === "light") {
       setThemeState(savedTheme);
+    }
+
+    const savedReasoning = (localStorage.getItem("eggent.reasoningMode") as ReasoningMode | null) || null;
+    if (savedReasoning === "off" || savedReasoning === "compact" || savedReasoning === "verbose") {
+      setReasoningModeState(savedReasoning);
     }
   }, []);
 
@@ -639,15 +667,22 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     setThemeState(next);
   };
 
+  const setReasoningMode = (mode: ReasoningMode) => {
+    setReasoningModeState(mode);
+    localStorage.setItem("eggent.reasoningMode", mode);
+  };
+
   const value = useMemo<I18nContextValue>(
     () => ({
       locale,
       setLocale,
       theme,
       setTheme,
+      reasoningMode,
+      setReasoningMode,
       t: (key, fallback) => messages[locale][key] || fallback || key,
     }),
-    [locale, theme]
+    [locale, theme, reasoningMode]
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;

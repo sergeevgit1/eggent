@@ -36,7 +36,7 @@ type TriggerMode = "header" | "profile" | "mobile-more";
 export function SystemNavigationSheet({ mode }: { mode: TriggerMode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { t, locale, setLocale, theme, setTheme } = useI18n();
+  const { t, locale, setLocale, theme, setTheme, reasoningMode, setReasoningMode } = useI18n();
 
   const items = [
     { href: "/dashboard/chats", label: t("nav.chatsManage", "Управление чатами"), icon: MessagesSquare },
@@ -135,6 +135,36 @@ export function SystemNavigationSheet({ mode }: { mode: TriggerMode }) {
                 >
                   <Moon className="size-3.5" />
                   {t("theme.dark", "Dark")}
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid gap-1.5">
+              <label className="text-xs text-muted-foreground">{t("settings.reasoning", "Reasoning")}</label>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  type="button"
+                  variant={reasoningMode === "off" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setReasoningMode("off")}
+                >
+                  {t("settings.reasoning.off", "Off")}
+                </Button>
+                <Button
+                  type="button"
+                  variant={reasoningMode === "compact" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setReasoningMode("compact")}
+                >
+                  {t("settings.reasoning.compact", "Compact")}
+                </Button>
+                <Button
+                  type="button"
+                  variant={reasoningMode === "verbose" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setReasoningMode("verbose")}
+                >
+                  {t("settings.reasoning.verbose", "Verbose")}
                 </Button>
               </div>
             </div>
