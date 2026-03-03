@@ -549,6 +549,61 @@ function logLLMRequest(options: {
   console.log(`\n${LLM_LOG_BORDER}\n`);
 }
 
+function extractAssistantText(msg: ModelMessage): string {
+  if (msg.role !== "assistant") return "";
+  const content = msg.content;
+  if (typeof content === "string") {
+    return content;
+  }
+  if (!Array.isArray(content)) {
+    return "";
+  }
+  let text = "";
+  for (const part of content) {
+    if (
+      typeof part === "object" &&
+      part !== null &&
+      "type" in part &&
+      part.type === "text" &&
+      "text" in part &&
+      typeof (part as { text?: unknown }).text === "string"
+    ) {
+      text += (part as { text: string }).text;
+    }
+  }
+  return text;
+}
+
+function getLastAssistantText(messages: ModelMessage[]): string {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const msg = messages[i];
+    if (msg.role !== "assistant") continue;
+    const text = extractAssistantText(msg).trim();
+    if (text) return text;
+  }
+  return "";
+}
+
+function shouldAutoContinueAssistant(
+  text: string,
+  finishReason?: string
+): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+
+  const reason = (finishReason || "").toLowerCase();
+  if (reason === "length" || reason === "max_tokens") {
+    return true;
+  }
+
+  // Common abrupt cutoff pattern from prompt-generation turns.
+  if (/(?:here is (?:the )?prompt|вот (?:твой )?(?:промпт|prompt))[:：]?\s*$/i.test(trimmed)) {
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * Run the agent for a given chat context and return a streamable result.
  * Uses Vercel AI SDK's streamText with stopWhen for automatic tool loop.
@@ -639,6 +694,39 @@ export async function runAgent(options: {
     temperature: settings.chatModel.temperature ?? 0.7,
     maxOutputTokens: settings.chatModel.maxTokens ?? 4096,
     onFinish: async (event) => {
+      const finishReason =
+        typeof (event as unknown as { finishReason?: unknown }).finishReason === "string"
+          ? ((event as unknown as { finishReason?: string }).finishReason as string)
+          : undefined;
+
+      const responseMessages = event.response.messages;
+      const lastAssistantText = getLastAssistantText(responseMessages);
+      let continuationText = "";
+
+      if (shouldAutoContinueAssistant(lastAssistantText, finishReason)) {
+        try {
+          const continuation = await generateText({
+            model,
+            system: systemPrompt,
+            messages: [
+              ...messages,
+              ...responseMessages,
+              {
+                role: "user",
+                content:
+                  "Continue your previous answer from exactly where it stopped. " +
+                  "Output only the continuation text, without repeating earlier content.",
+              },
+            ],
+            temperature: settings.chatModel.temperature ?? 0.7,
+            maxOutputTokens: Math.min(settings.chatModel.maxTokens ?? 4096, 1200),
+          });
+          continuationText = (continuation.text || "").trim();
+        } catch (error) {
+          console.warn("Auto-continuation failed:", error);
+        }
+      }
+
       if (mcpCleanup) {
         try {
           await mcpCleanup();
@@ -661,9 +749,16 @@ export async function runAgent(options: {
           });
 
           // Add all response messages (assistant + tool calls + tool results)
-          const responseMessages = event.response.messages;
           for (const msg of responseMessages) {
             chat.messages.push(...convertModelMessageToChatMessages(msg, now));
+          }
+          if (continuationText) {
+            chat.messages.push({
+              id: crypto.randomUUID(),
+              role: "assistant",
+              content: continuationText,
+              createdAt: now,
+            });
           }
 
           chat.updatedAt = now;
@@ -680,6 +775,12 @@ export async function runAgent(options: {
         // Non-critical, don't fail the response
       }
 
+      publishUiSyncEvent({
+        topic: "chat",
+        projectId: options.projectId ?? null,
+        chatId: options.chatId,
+        reason: continuationText ? "agent_turn_auto_continued" : "agent_turn_finished",
+      });
       publishUiSyncEvent({
         topic: "files",
         projectId: options.projectId ?? null,
